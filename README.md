@@ -5,7 +5,8 @@ App para anotar tu peso de vez en cuando y que te celebre cada avance: kilos, gr
 ## Qué hace
 
 - **Registro sin presión:** anotas el peso cuando quieras, con una nota opcional. La app calcula una **tendencia suavizada** (media móvil exponencial ajustada por los días entre registros) para que una subida de un día no cuente.
-- **Personajita:** una niña güera estilo chibi (coletas, moñitos, parpadea). Su cuerpo se desinfla según tu % de grasa (del InBody o estimado con tu IMC) y la línea punteada muestra cómo era el día uno.
+- **Figura:** una silueta genérica de mujer que se adelgaza según tu % de grasa (del InBody o estimado con tu IMC). La línea punteada muestra cómo eras el día uno.
+- **Peso al empezar:** si ya venías bajando antes de usar la app, pones tu peso y la fecha en que empezaste (también se puede cambiar en Ajustes) y cuenta todo lo que llevas.
 - **Logros en 5 categorías:**
   - **Salud:** saliste de obesidad, peso saludable, 3/5/7/10/15/20% perdido
   - **Cuerpo (InBody):** kg de grasa fuera, músculo ganado, % de grasa, grasa visceral en rango sano, recomposición corporal

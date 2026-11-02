@@ -67,7 +67,9 @@ export function summary(state: State) {
   const ws = trendSeries(state.weighIns)
   const ib = sortByDate(state.inbodies)
   const startKg = ws.length ? ws[0].kg : 0
-  const current = ws.length ? ws[ws.length - 1].trend : 0
+  // Para alguien que se pesa de vez en cuando, el último dato real es lo más claro.
+  // La tendencia suavizada se usa en la gráfica y para el ritmo.
+  const current = ws.length ? ws[ws.length - 1].kg : 0
   const lastRaw = ws.length ? ws[ws.length - 1].kg : 0
   const lost = startKg - current
   const lostPct = startKg ? (lost / startKg) * 100 : 0
@@ -110,6 +112,7 @@ export function predictFor(sum: Summary, date: string) {
 
 /** Mensaje de coach justo después de anotar */
 export function coachMessage(before: Summary | undefined, after: Summary): string {
+  if ((!before || before.ws.length === 0) && after.lost > 0.2) return `¡Arrancamos, ${after.p.name}! Ya traes ${fmt(after.lost)} kg menos desde que empezaste. Desde aquí lo seguimos celebrando.`
   if (!before || before.ws.length === 0) return `¡Arrancamos, ${after.p.name}! Este es tu punto de partida. Cada número que anotes a partir de aquí cuenta tu historia.`
   const prevMin = Math.min(...before.ws.map((w) => w.kg))
   const delta = after.lastRaw - before.current

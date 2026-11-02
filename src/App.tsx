@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Achievement, State } from './lib/types'
 import { coachMessage, summary } from './lib/calc'
 import { syncUnlocked } from './lib/achievements'
-import { demoState, emptyState, loadState, saveState, todayISO, uid } from './lib/store'
+import { START_ID, addDays, demoState, emptyState, loadState, normalize, saveState, todayISO, uid, upsertStart } from './lib/store'
+import { sortByDate } from './lib/calc'
 import { Celebration, Sheet, Toast } from './components/ui'
 import { EventForm, InBodyForm, ProfileForm, WeighInForm } from './components/Forms'
 import { Historial, Home, Logros } from './Screens'
@@ -50,9 +51,10 @@ export default function App() {
           <ProfileForm
             withWeight
             cta="Empezar"
-            onSave={(p, kg) => {
-              const s = { ...emptyState(), profile: p, weighIns: [{ id: uid(), date: todayISO(), kg: kg! }] }
-              const { state: synced } = syncUnlocked(s)
+            onSave={({ profile, startKg, startDate, todayKg }) => {
+              let st: State = { ...emptyState(), profile, weighIns: [{ id: uid(), date: todayISO(), kg: todayKg! }] }
+              if (startKg && startKg !== todayKg) st = upsertStart(st, startKg, startDate < todayISO() ? startDate : addDays(todayISO(), -1))
+              const { state: synced } = syncUnlocked(st)
               setState(synced)
               setToast(coachMessage(undefined, summary(synced)))
             }}
@@ -167,6 +169,7 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
   const [saved, setSaved] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const first = sortByDate(state.weighIns)[0]
   const exportData = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
     const a = document.createElement('a')
@@ -178,7 +181,24 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
     <div className="space-y-4">
       <h1 className="px-1 font-display text-3xl font-extrabold">Ajustes</h1>
       <section className="card p-5">
-        <ProfileForm initial={state.profile} cta={saved ? '✓ Guardado' : 'Guardar cambios'} onSave={(p) => { onChange({ ...state, profile: p }); setSaved(true); setTimeout(() => setSaved(false), 1500) }} />
+        <h2 className="mb-3 font-display text-xl font-bold">Tus datos de inicio</h2>
+        <ProfileForm
+          initial={state.profile}
+          initialStart={first ? { kg: first.kg, date: first.date } : undefined}
+          cta={saved ? '✓ Guardado' : 'Guardar cambios'}
+          onSave={({ profile, startKg, startDate }) => {
+            let n: State = { ...state, profile }
+            if (startKg && first && (startKg !== first.kg || startDate !== first.date)) {
+              // El primer registro de la báscula no se borra: el de inicio se agrega o se reemplaza.
+              // Solo si es el mismo día que ese primer registro, el de inicio toma su lugar.
+              const keep = first.id !== START_ID && startDate === first.date ? state.weighIns.filter((w) => w.id !== first.id) : state.weighIns
+              n = upsertStart({ ...n, weighIns: keep }, startKg, startDate)
+            }
+            onChange(n)
+            setSaved(true)
+            setTimeout(() => setSaved(false), 1500)
+          }}
+        />
       </section>
       <section className="card space-y-3 p-5">
         <h2 className="font-display text-xl font-bold">Tus datos</h2>
@@ -188,7 +208,7 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
         <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={async (e) => {
           const f = e.target.files?.[0]
           if (!f) return
-          try { onChange({ ...emptyState(), ...JSON.parse(await f.text()) }) } catch { /* archivo inválido */ }
+          try { onChange(normalize({ ...emptyState(), ...JSON.parse(await f.text()) })) } catch { /* archivo inválido */ }
         }} />
         {confirm ? (
           <button onClick={onReset} className="btn w-full bg-coral text-white">Sí, borrar todo</button>

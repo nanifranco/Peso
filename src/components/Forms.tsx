@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { InBody, PlannedEvent, Profile, Sex, WeighIn } from '../lib/types'
-import { todayISO, uid } from '../lib/store'
+import type { InBody, PlannedEvent, Profile, WeighIn } from '../lib/types'
+import { addDays, todayISO, uid } from '../lib/store'
 
 const num = (s: string) => {
   const n = parseFloat(s.replace(',', '.'))
@@ -113,43 +113,59 @@ export function EventForm({ onSave }: { onSave: (e: PlannedEvent) => void }) {
   )
 }
 
-export function ProfileForm({ initial, onSave, withWeight, cta }: { initial?: Profile; withWeight?: boolean; cta: string; onSave: (p: Profile, kg?: number) => void }) {
-  const [name, setName] = useState(initial?.name ?? '')
-  const [sex, setSex] = useState<Sex>(initial?.sex ?? 'h')
+export interface ProfileInput {
+  profile: Profile
+  startKg?: number
+  startDate: string
+  todayKg?: number
+}
+
+export function ProfileForm({ initial, initialStart, onSave, withWeight, cta }: {
+  initial?: Profile
+  initialStart?: { kg: number; date: string }
+  withWeight?: boolean
+  cta: string
+  onSave: (v: ProfileInput) => void
+}) {
   const [h, setH] = useState(initial ? String(initial.heightCm) : '')
   const [goal, setGoal] = useState(initial?.goalKg ? String(initial.goalKg) : '')
+  const [start, setStart] = useState(initialStart ? String(initialStart.kg) : '')
+  const [startDate, setStartDate] = useState(initialStart?.date ?? addDays(todayISO(), -30))
   const [kg, setKg] = useState('')
-  const ok = name && num(h) && (!withWeight || num(kg))
+  const ok = num(h) && (!withWeight || num(kg)) && (withWeight || num(start))
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (ok) onSave({ name: name.trim(), sex, heightCm: num(h)!, goalKg: num(goal) }, num(kg)) }} className="space-y-4">
-      <div>
-        <label className="label">¿Cómo te digo?</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" className="field" />
-      </div>
-      <div>
-        <label className="label">Sexo (para rangos de grasa)</label>
-        <div className="grid grid-cols-2 gap-2">
-          {(['h', 'm'] as Sex[]).map((s) => (
-            <button type="button" key={s} onClick={() => setSex(s)} className={`btn ${sex === s ? 'bg-ink text-cream' : 'bg-line/60'}`}>{s === 'h' ? 'Hombre' : 'Mujer'}</button>
-          ))}
-        </div>
-      </div>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (ok) onSave({ profile: { name: 'Nani', sex: 'm', heightCm: num(h)!, goalKg: num(goal) }, startKg: num(start), startDate, todayKg: num(kg) })
+      }}
+      className="space-y-4"
+    >
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label">Estatura (cm)</label>
-          <input inputMode="decimal" value={h} onChange={(e) => setH(e.target.value)} placeholder="175" className="field" />
+          <input inputMode="decimal" value={h} onChange={(e) => setH(e.target.value)} placeholder="165" className="field" />
         </div>
         {withWeight && (
           <div>
             <label className="label">Peso hoy (kg)</label>
-            <input inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="90.0" className="field" />
+            <input inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="88.0" className="field" />
           </div>
         )}
+        <div>
+          <label className="label">Peso al empezar</label>
+          <input inputMode="decimal" value={start} onChange={(e) => setStart(e.target.value)} placeholder={withWeight ? 'Si ya bajaste' : 'kg'} className="field" />
+        </div>
+        <div>
+          <label className="label">¿Cuándo empezaste?</label>
+          <input type="date" max={todayISO()} value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field px-3! text-base!" />
+        </div>
         <div className={withWeight ? 'col-span-2' : ''}>
           <label className="label">Meta (kg, opcional)</label>
-          <input inputMode="decimal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Sin meta: solo celebrar hitos" className="field" />
+          <input inputMode="decimal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Sin meta: solo celebrar" className="field" />
         </div>
       </div>
+      {withWeight && <p className="-mt-1 text-xs text-mute">Si ya venías bajando antes de usar la app, pon tu peso de cuando empezaste para que cuente todo lo que llevas.</p>}
       <button disabled={!ok} className="btn-primary w-full text-lg disabled:opacity-40">{cta}</button>
     </form>
   )

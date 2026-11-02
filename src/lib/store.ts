@@ -8,7 +8,7 @@ export function loadState(): State {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return emptyState()
-    return { ...emptyState(), ...JSON.parse(raw) }
+    return normalize({ ...emptyState(), ...JSON.parse(raw) })
   } catch {
     return emptyState()
   }
@@ -20,6 +20,19 @@ export function saveState(s: State) {
   } catch {
     /* sin espacio o modo privado: seguimos en memoria */
   }
+}
+
+/** La app siempre es de Nani (mujer) */
+export function normalize(s: State): State {
+  return s.profile ? { ...s, profile: { ...s.profile, name: 'Nani', sex: 'm' } } : s
+}
+
+export const START_ID = 'start'
+
+/** Guarda (o reemplaza) el peso con el que empezaste como un registro más */
+export function upsertStart(s: State, kg: number, date: string): State {
+  const rest = s.weighIns.filter((w) => w.id !== START_ID)
+  return { ...s, weighIns: [...rest, { id: START_ID, date, kg, note: 'Cuando empecé' }] }
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 10)
@@ -39,7 +52,7 @@ export function addDays(iso: string, n: number) {
 export function demoState(): State {
   const start = addDays(todayISO(), -150)
   const weighIns: WeighIn[] = []
-  let kg = 98.4
+  let kg = 86.4
   let day = 0
   let seed = 7
   const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280)
@@ -52,12 +65,12 @@ export function demoState(): State {
   weighIns[2].note = 'Empecé a caminar a la uni'
   weighIns[6].note = 'Semana de exámenes, comí fatal'
   return {
-    profile: { name: 'Nani', sex: 'h', heightCm: 176, goalKg: 80 },
+    profile: { name: 'Nani', sex: 'm', heightCm: 165, goalKg: 68 },
     weighIns,
     inbodies: [
-      { id: uid(), date: addDays(start, 2), kg: 98.1, fatPct: 31.2, fatKg: 30.6, muscleKg: 37.4, visceral: 13, bmr: 1820 },
-      { id: uid(), date: addDays(start, 70), kg: 93.6, fatPct: 28.4, fatKg: 26.6, muscleKg: 37.9, visceral: 11, bmr: 1812 },
-      { id: uid(), date: addDays(start, 140), kg: 88.9, fatPct: 24.6, fatKg: 21.9, muscleKg: 38.6, visceral: 9, bmr: 1808 },
+      { id: uid(), date: addDays(start, 2), kg: 86.1, fatPct: 41.2, fatKg: 35.5, muscleKg: 27.4, visceral: 12, bmr: 1480 },
+      { id: uid(), date: addDays(start, 70), kg: 81.6, fatPct: 38.3, fatKg: 31.3, muscleKg: 27.8, visceral: 10, bmr: 1468 },
+      { id: uid(), date: addDays(start, 140), kg: 76.9, fatPct: 34.6, fatKg: 26.6, muscleKg: 28.3, visceral: 8, bmr: 1462 },
     ],
     events: [{ id: uid(), name: 'Regreso a México', date: addDays(todayISO(), 45) }],
     unlocked: {},
