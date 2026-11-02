@@ -22,12 +22,12 @@ export function WeighInForm({ last, onSave }: { last?: number; onSave: (w: Weigh
       className="space-y-4 pb-4"
     >
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => bump(-0.1)} className="h-14 w-14 shrink-0 rounded-2xl bg-line/70 text-2xl font-bold">−</button>
+        <button type="button" onClick={() => bump(-0.1)} className="h-14 w-14 shrink-0 rounded-md border-2 border-wall font-display text-xl">−</button>
         <div className="relative flex-1">
-          <input autoFocus inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="0.0" className="field text-center font-display text-5xl! font-extrabold py-4!" />
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-mute">kg</span>
+          <input autoFocus inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="0.0" className="field text-center font-display text-3xl! py-4!" />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xl text-mute">kg</span>
         </div>
-        <button type="button" onClick={() => bump(0.1)} className="h-14 w-14 shrink-0 rounded-2xl bg-line/70 text-2xl font-bold">+</button>
+        <button type="button" onClick={() => bump(0.1)} className="h-14 w-14 shrink-0 rounded-md border-2 border-wall font-display text-xl">+</button>
       </div>
       <div>
         <label className="label">Fecha</label>
@@ -71,8 +71,8 @@ export function InBodyForm({ onSave }: { onSave: (ib: InBody) => void }) {
       }}
       className="space-y-4 pb-4"
     >
-      <p className="rounded-2xl bg-sky/10 p-3 text-sm text-ink/80">
-        📄 Copia los números de tu hoja de InBody. Llena solo los que tengas; con <b>peso</b> y <b>% de grasa</b> ya se desbloquean muchos logros.
+      <p className="rounded-md border-2 border-sky/50 p-3 text-xl leading-tight text-ink/80">
+        Copia los números de tu hoja de InBody. Llena solo los que tengas; con <b>peso</b> y <b>% de grasa</b> ya se desbloquean muchos logros.
       </p>
       <div>
         <label className="label">Fecha del estudio</label>
@@ -84,9 +84,9 @@ export function InBodyForm({ onSave }: { onSave: (ib: InBody) => void }) {
             <label className="label">{f.label}</label>
             <div className="relative">
               <input inputMode="decimal" value={vals[f.k] ?? ''} onChange={(e) => setVals({ ...vals, [f.k]: e.target.value })} className="field pr-12" />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-mute">{f.unit}</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-lg text-mute">{f.unit}</span>
             </div>
-            <div className="mt-1 text-[10px] text-mute">{f.hint}</div>
+            <div className="mt-1 text-base leading-none text-mute">{f.hint}</div>
           </div>
         ))}
       </div>
@@ -130,7 +130,7 @@ export function ProfileForm({ initial, onSave, withWeight, cta }: { initial?: Pr
         <label className="label">Sexo (para rangos de grasa)</label>
         <div className="grid grid-cols-2 gap-2">
           {(['h', 'm'] as Sex[]).map((s) => (
-            <button type="button" key={s} onClick={() => setSex(s)} className={`btn ${sex === s ? 'bg-ink text-cream' : 'bg-line/60'}`}>{s === 'h' ? 'Hombre' : 'Mujer'}</button>
+            <button type="button" key={s} onClick={() => setSex(s)} className={`btn ${sex === s ? 'bg-sky text-cream' : 'bg-line'}`}>{s === 'h' ? 'Hombre' : 'Mujer'}</button>
           ))}
         </div>
       </div>

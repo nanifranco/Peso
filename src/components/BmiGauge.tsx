@@ -32,8 +32,8 @@ export default function BmiGauge({ value, start }: { value: number; start: numbe
         ))}
         {Math.abs(start - value) > 0.3 && <circle cx={sx} cy={sy} r="5" fill="none" stroke="#F3EBE1" strokeOpacity=".6" strokeWidth="2" strokeDasharray="2 2" />}
         <circle cx={nx} cy={ny} r="11" fill="#12100E" stroke={cat.color} strokeWidth="5" />
-        <text x="100" y="86" textAnchor="middle" className="font-display" fontSize="30" fontWeight="800" fill="#F3EBE1">{fmt(value)}</text>
-        <text x="100" y="106" textAnchor="middle" fontSize="12" fontWeight="600" fill={cat.color}>{cat.label}</text>
+        <text x="100" y="86" textAnchor="middle" className="font-display" fontSize="22" fill="#F3EBE1">{fmt(value)}</text>
+        <text x="100" y="106" textAnchor="middle" fontSize="16" fontFamily="VT323" fill={cat.color}>{cat.label}</text>
       </svg>
     </div>
   )
