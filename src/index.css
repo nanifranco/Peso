@@ -112,3 +112,24 @@ body {
     #fff6ea;
   border: 1px solid var(--color-line);
 }
+
+/* Personajita: parpadeo y coletas que se mecen */
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+.blink {
+  animation: blink 4.5s infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes sway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(var(--r, 4deg)); }
+}
+.sway-l, .sway-r {
+  animation: sway 3.2s ease-in-out infinite;
+  transform-box: fill-box;
+}
+.sway-l { transform-origin: 80% 10%; --r: 5deg; }
+.sway-r { transform-origin: 20% 10%; --r: -5deg; }

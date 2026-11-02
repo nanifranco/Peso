@@ -66,8 +66,8 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onDeleteEve
               </div>
             )}
           </div>
-          <div className="relative -my-1 -mr-2 shrink-0">
-            <Avatar fat={fatness(sum.fatNow, p.sex)} ghostFat={fatness(sum.fatStart, p.sex)} sex={p.sex} width={142} />
+          <div className="relative -mr-3 flex shrink-0 items-center">
+            <Avatar fat={fatness(sum.fatNow, p.sex)} ghostFat={fatness(sum.fatStart, p.sex)} sex={p.sex} width={160} />
           </div>
         </div>
         <button onClick={onAdd} className="btn-primary relative mt-3 w-full text-lg">+ Anotar peso</button>
