@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Achievement, State } from './lib/types'
-import { daysBetween, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
+import { bmiCategory, daysBetween, fatness, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
 import { KIND_LABEL, nextWeightMilestone, withHistory } from './lib/achievements'
 import { todayISO } from './lib/store'
 import Avatar from './components/Avatar'
@@ -20,162 +20,144 @@ function Delta({ v, unit, goodWhen }: { v?: number; unit: string; goodWhen: 'dow
   )
 }
 
-export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros, onDeleteEvent }: {
-  state: State; sum: Summary; onAdd: () => void; onAddInBody: () => void; onAddEvent: () => void; onOpenLogros: () => void; onDeleteEvent: (id: string) => void
+export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onDeleteEvent }: {
+  state: State; sum: Summary; onAdd: () => void; onAddInBody: () => void; onOpenLogros: () => void; onDeleteEvent: (id: string) => void
 }) {
   const all = withHistory(state)
   const next = nextWeightMilestone(state)
   const lastEq = all.filter((a) => a.kind === 'equivalencia' && a.unlocked).pop()
-  const recent = all
-    .filter((a) => a.unlocked && state.unlocked[a.id])
-    .sort((a, b) => state.unlocked[b.id].localeCompare(state.unlocked[a.id]))
-    .slice(0, 8)
   const { p, firstIB, lastIB } = sum
   const ibDelta = (k: 'fatPct' | 'fatKg' | 'muscleKg' | 'visceral') =>
     sum.ib.length > 1 && firstIB?.[k] != null && lastIB?.[k] != null ? (lastIB[k] as number) - (firstIB[k] as number) : undefined
   const hour = new Date().getHours()
   const greet = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
+  const cat = bmiCategory(sum.curBmi)
+  const events = sortByDate(state.events).filter((e) => e.date >= todayISO())
+  const lost = Math.max(0, sum.lost)
 
   return (
-    <div className="space-y-4">
-      <header className="flex items-end justify-between px-1">
+    <div className="space-y-3">
+      <header className="flex items-end justify-between px-1 pb-1">
         <div>
           <div className="text-sm text-mute">{greet}</div>
-          <h1 className="font-display text-3xl font-extrabold">{p.name} 👋</h1>
+          <h1 className="font-display text-3xl font-extrabold">{p.name}</h1>
         </div>
         {sum.daysSinceLast > 0 && <div className="text-right text-xs text-mute">último registro<br />hace {sum.daysSinceLast} {sum.daysSinceLast === 1 ? 'día' : 'días'}</div>}
       </header>
 
-      {/* Héroe: avatar */}
-      <section className="card relative overflow-hidden px-5 pb-5 pt-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-mute">Llevas</div>
-            <div className="font-display text-6xl font-extrabold leading-none tracking-tight">
-              {sum.lost >= 0 ? '−' : '+'}{fmt(Math.abs(sum.lost))}<span className="text-2xl"> kg</span>
+      {/* Héroe */}
+      <section className="hero relative overflow-hidden rounded-[32px] p-5 pb-4">
+        <div className="relative flex items-stretch gap-2">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink/50">Llevas</div>
+            <div className="font-display text-[64px] font-extrabold leading-[0.9] tracking-tight">
+              {sum.lost >= 0 ? '−' : '+'}{fmt(Math.abs(sum.lost))}
             </div>
-            <div className="mt-1 text-sm text-mute">{fmt(sum.startKg)} → <b className="text-ink">{fmt(sum.current)}</b> kg</div>
+            <div className="font-display text-xl font-bold text-ink/60">kilos</div>
+            <div className="mt-4 space-y-2.5 text-sm">
+              <Stat label="Hoy" value={`${fmt(sum.current)} kg`} />
+              <Stat label="Empezaste" value={`${fmt(sum.startKg)} kg`} muted />
+              <Stat label="Grasa" value={`${fmt(sum.fatNow)}%`} hint={lastIB ? 'InBody' : 'estimada'} />
+              {sum.rate !== undefined && <Stat label="Ritmo" value={`${sum.rate <= 0 ? '−' : '+'}${fmt(Math.abs(sum.rate), 2)} kg/sem`} />}
+            </div>
+            {lastEq && lost > 0.5 && (
+              <div className="mt-auto pt-4 text-[13px] leading-snug text-ink/70">
+                <span className="text-xl">{lastEq.emoji}</span> Ya no cargas {lastEq.title.split(': ')[1]}
+              </div>
+            )}
           </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <span className="rounded-full bg-sun/40 px-3 py-1 text-xs font-bold">{fmt(Math.max(0, sum.lostPct))}% menos</span>
-            {sum.rate !== undefined && <span className="rounded-full bg-line/70 px-3 py-1 text-xs font-semibold">{sum.rate <= 0 ? '▼' : '▲'} {fmt(Math.abs(sum.rate), 2)} kg/sem</span>}
+          <div className="relative -my-1 -mr-2 shrink-0">
+            <Avatar fat={fatness(sum.fatNow, p.sex)} ghostFat={fatness(sum.fatStart, p.sex)} sex={p.sex} width={142} />
           </div>
         </div>
-        <div className="-mb-2 mt-1 flex justify-center">
-          <Avatar shape={sum.shape} lostKg={Math.max(0, sum.lost)} size={190} />
-        </div>
-        <div className="text-center text-xs text-mute">
-          {sum.shape > 0.03 ? <>La línea punteada eres tú el día uno · {Math.round(sum.shape * 100)}% del camino</> : <>Tu avatar cambia conforme avanzas</>}
-        </div>
-        <button onClick={onAdd} className="btn-primary mt-4 w-full text-lg">+ Anotar peso</button>
+        <button onClick={onAdd} className="btn-primary relative mt-3 w-full text-lg">+ Anotar peso</button>
+        {sum.shape > 0.03 && <p className="relative mt-2 text-center text-[11px] text-ink/45">La línea punteada eres tú el día uno</p>}
       </section>
 
-      {/* Siguiente hito */}
+      {/* Siguiente logro */}
       {next && (
         <button onClick={onOpenLogros} className="card flex w-full items-center gap-4 p-4 text-left">
           <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-cream text-3xl">{next.emoji}</div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold uppercase tracking-wider text-coral">Siguiente logro</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-coral">Siguiente logro</div>
             <div className="truncate font-display text-lg font-bold">{next.title}</div>
-            <div className="mb-2 text-sm text-mute">{next.remaining}{(next.remainingKg ?? 9) < 1 ? ' 👀 ¡ya casi!' : ''}</div>
+            <div className="mb-2 text-sm text-mute">{next.remaining}{(next.remainingKg ?? 9) < 1 ? ' · ¡ya casi! 👀' : ''}</div>
             <Progress value={next.progress ?? 0} />
           </div>
         </button>
       )}
 
-      {/* Equivalencia */}
-      {lastEq && (
-        <section className="card flex items-center gap-4 bg-sun/25! p-4">
-          <div className="text-5xl">{lastEq.emoji}</div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-mute">Ya no cargas</div>
-            <div className="font-display text-xl font-bold leading-tight">{lastEq.title.split(': ')[1]}</div>
-          </div>
-        </section>
-      )}
+      {/* IMC compacto */}
+      <section className="card flex items-center gap-4 p-4">
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl font-display text-lg font-extrabold text-white" style={{ background: cat.color }}>{fmt(sum.curBmi)}</div>
+        <div className="flex-1">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-mute">IMC</div>
+          <div className="font-display text-lg font-bold">{cat.label}</div>
+          <div className="text-sm text-mute">empezaste en {fmt(sum.startBmi)} ({bmiCategory(sum.startBmi).label})</div>
+        </div>
+      </section>
 
       {/* Cuerpo */}
-      <section className="card p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold">Tu cuerpo</h2>
-          <button onClick={onAddInBody} className="rounded-full bg-sky/15 px-3 py-1.5 text-sm font-semibold text-sky">+ InBody</button>
-        </div>
-        {lastIB ? (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { l: '% grasa', v: lastIB.fatPct, u: '%', d: ibDelta('fatPct'), g: 'down' as const, du: 'pts' },
-                { l: 'Masa grasa', v: lastIB.fatKg, u: 'kg', d: ibDelta('fatKg'), g: 'down' as const, du: 'kg' },
-                { l: 'Músculo', v: lastIB.muscleKg, u: 'kg', d: ibDelta('muscleKg'), g: 'up' as const, du: 'kg' },
-                { l: 'Visceral', v: lastIB.visceral, u: 'nivel', d: ibDelta('visceral'), g: 'down' as const, du: '' },
-              ].filter((x) => x.v != null).map((x) => (
-                <div key={x.l} className="rounded-2xl bg-cream p-3">
-                  <div className="text-xs text-mute">{x.l}</div>
-                  <div className="font-display text-2xl font-bold">{fmt(x.v!, x.u === 'nivel' ? 0 : 1)}<span className="text-sm font-medium text-mute"> {x.u}</span></div>
-                  <Delta v={x.d} unit={x.du} goodWhen={x.g} />
-                </div>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-mute">
-              Último InBody: {dateLabel(lastIB.date)}{sum.ib.length > 1 ? ` · comparado con el primero (${dateLabel(firstIB!.date)})` : ' · sube otro para comparar'}
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-mute">Cuando tengas un InBody, súbelo aquí. Celebramos la grasa que pierdes y el músculo que ganas, no solo el peso.</p>
-        )}
-      </section>
-
-      {/* IMC */}
-      <section className="card p-5">
-        <h2 className="mb-2 font-display text-xl font-bold">IMC</h2>
-        <BmiGauge value={sum.curBmi} start={sum.startBmi} />
-        <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
-      </section>
-
-      {/* Eventos */}
-      <section className="card p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold">Lo que viene</h2>
-          <button onClick={onAddEvent} className="rounded-full bg-line/70 px-3 py-1.5 text-sm font-semibold">+ Evento</button>
-        </div>
-        {state.events.filter((e) => e.date >= todayISO()).length === 0 && <p className="text-sm text-mute">Agrega un viaje o una fecha importante y te digo cómo llegarías a ese ritmo.</p>}
-        <div className="space-y-2">
-          {sortByDate(state.events).filter((e) => e.date >= todayISO()).map((e) => {
-            const pr = predictFor(sum, e.date)
-            const days = daysBetween(todayISO(), e.date)
-            return (
-              <div key={e.id} className="flex items-center gap-3 rounded-2xl bg-cream p-3">
-                <div className="flex-1">
-                  <div className="font-semibold">{e.name}</div>
-                  <div className="text-xs text-mute">{dateLabel(e.date)} · en {days} días</div>
-                </div>
-                <div className="text-right">
-                  {pr ? <><div className="font-display text-xl font-bold">~{fmt(pr.kg)} kg</div><div className="text-[11px] text-leaf">{pr.kg < sum.current ? `−${fmt(sum.current - pr.kg)} kg más` : 'a este ritmo'}</div></> : <div className="text-xs text-mute">anota más<br />para predecir</div>}
-                </div>
-                <button onClick={() => onDeleteEvent(e.id)} className="text-mute" aria-label="Borrar evento">×</button>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* Recientes */}
-      {recent.length > 0 && (
-        <section>
-          <div className="mb-2 flex items-center justify-between px-1">
-            <h2 className="font-display text-xl font-bold">Logros recientes</h2>
-            <button onClick={onOpenLogros} className="text-sm font-semibold text-coral">Ver todos</button>
+      {lastIB ? (
+        <section className="card p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-display text-xl font-bold">Tu cuerpo</h2>
+            <button onClick={onAddInBody} className="rounded-full bg-sky/15 px-3 py-1.5 text-sm font-semibold text-sky">+ InBody</button>
           </div>
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
-            {recent.map((a) => (
-              <div key={a.id} className="card w-36 shrink-0 p-3">
-                <div className="text-3xl">{a.emoji}</div>
-                <div className="mt-1 text-sm font-semibold leading-tight">{a.title}</div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { l: '% grasa', v: lastIB.fatPct, u: '%', d: ibDelta('fatPct'), g: 'down' as const, du: 'pts' },
+              { l: 'Masa grasa', v: lastIB.fatKg, u: 'kg', d: ibDelta('fatKg'), g: 'down' as const, du: 'kg' },
+              { l: 'Músculo', v: lastIB.muscleKg, u: 'kg', d: ibDelta('muscleKg'), g: 'up' as const, du: 'kg' },
+              { l: 'Visceral', v: lastIB.visceral, u: 'nivel', d: ibDelta('visceral'), g: 'down' as const, du: '' },
+            ].filter((x) => x.v != null).map((x) => (
+              <div key={x.l} className="rounded-2xl bg-cream p-3">
+                <div className="text-xs text-mute">{x.l}</div>
+                <div className="font-display text-2xl font-bold">{fmt(x.v!, x.u === 'nivel' ? 0 : 1)}<span className="text-sm font-medium text-mute"> {x.u}</span></div>
+                <Delta v={x.d} unit={x.du} goodWhen={x.g} />
               </div>
             ))}
           </div>
+          <p className="mt-3 text-xs text-mute">
+            {dateLabel(lastIB.date)}{sum.ib.length > 1 ? ` · vs. tu primer InBody (${dateLabel(firstIB!.date)})` : ' · sube otro para comparar'}
+          </p>
         </section>
+      ) : (
+        <button onClick={onAddInBody} className="card flex w-full items-center gap-4 p-4 text-left">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-sky/15 text-2xl">🔬</div>
+          <div className="flex-1">
+            <div className="font-display text-lg font-bold">¿Tienes un InBody?</div>
+            <div className="text-sm text-mute">Súbelo y celebramos la grasa que pierdes y el músculo que ganas</div>
+          </div>
+        </button>
       )}
+
+      {/* Eventos */}
+      {events.map((e) => {
+        const pr = predictFor(sum, e.date)
+        const days = daysBetween(todayISO(), e.date)
+        return (
+          <section key={e.id} className="card flex items-center gap-4 p-4">
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-sun/40 text-center leading-none">
+              <div><div className="font-display text-xl font-extrabold">{days}</div><div className="text-[10px] font-semibold">días</div></div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-display text-lg font-bold">{e.name}</div>
+              <div className="text-sm text-mute">{pr ? <>llegarías con <b className="text-ink">~{fmt(pr.kg)} kg</b></> : 'anota más para predecir'}</div>
+            </div>
+            <button onClick={() => onDeleteEvent(e.id)} className="px-1 text-lg text-mute" aria-label="Borrar evento">×</button>
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+function Stat({ label, value, hint, muted }: { label: string; value: string; hint?: string; muted?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 border-b border-ink/10 pb-1.5">
+      <span className="text-ink/55">{label}{hint && <span className="text-[10px] text-ink/40"> · {hint}</span>}</span>
+      <span className={`font-semibold ${muted ? 'text-ink/50' : ''}`}>{value}</span>
     </div>
   )
 }
@@ -243,6 +225,11 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody }: { sta
         <h1 className="font-display text-3xl font-extrabold">Historial</h1>
         <p className="text-sm text-mute">Puntos: lo que marcó la báscula · Línea: tu tendencia real</p>
       </header>
+      <section className="card p-5">
+        <h2 className="mb-1 font-display text-lg font-bold">IMC</h2>
+        <BmiGauge value={sum.curBmi} start={sum.startBmi} />
+        <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
+      </section>
       <section className="card p-4">
         <Chart data={sum.ws} goal={sum.p.goalKg} inbodyDates={state.inbodies.map((i) => i.date)} />
       </section>

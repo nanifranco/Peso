@@ -5,7 +5,7 @@ App para anotar tu peso de vez en cuando y que te celebre cada avance: kilos, gr
 ## Qué hace
 
 - **Registro sin presión:** anotas el peso cuando quieras, con una nota opcional. La app calcula una **tendencia suavizada** (media móvil exponencial ajustada por los días entre registros) para que una subida de un día no cuente.
-- **Avatar que cambia:** la silueta se adelgaza según tu avance. Si tienes InBody usa tu % de grasa; si no, tu peso. La línea punteada es como empezaste y las bolitas amarillas son la grasa que sale.
+- **Avatar realista:** una persona con proporciones reales (hombre o mujer) en estilo ilustración plana. Su silueta sale de tu % de grasa (del InBody o estimado con tu IMC) y la línea punteada muestra cómo eras el día uno.
 - **Logros en 5 categorías:**
   - **Salud:** saliste de obesidad, peso saludable, 3/5/7/10/15/20% perdido
   - **Cuerpo (InBody):** kg de grasa fuera, músculo ganado, % de grasa, grasa visceral en rango sano, recomposición corporal

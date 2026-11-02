@@ -104,3 +104,11 @@ body {
 
 @keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
 .fade-in { animation: fade-in 0.2s ease both; }
+
+.hero {
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(255, 209, 102, 0.55), transparent 60%),
+    radial-gradient(90% 70% at 0% 100%, rgba(255, 107, 74, 0.18), transparent 60%),
+    #fff6ea;
+  border: 1px solid var(--color-line);
+}

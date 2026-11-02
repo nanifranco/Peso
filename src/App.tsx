@@ -42,7 +42,7 @@ export default function App() {
     return (
       <div className="safe-top safe-bottom mx-auto flex min-h-dvh max-w-md flex-col px-5">
         <div className="flex flex-col items-center pt-4 text-center">
-          <Avatar shape={0} lostKg={0} size={130} />
+          <Avatar fat={0.55} width={96} />
           <h1 className="mt-2 font-display text-4xl font-extrabold">Peso</h1>
           <p className="mt-2 text-mute">Anota cuando quieras. Yo me encargo de celebrar cada cosa que logres: kilos, grasa, músculo y salud.</p>
         </div>
@@ -83,7 +83,6 @@ export default function App() {
             sum={s}
             onAdd={() => setSheet('peso')}
             onAddInBody={() => setSheet('inbody')}
-            onAddEvent={() => setSheet('evento')}
             onOpenLogros={() => setTab('logros')}
             onDeleteEvent={(id) => setState({ ...state, events: state.events.filter((e) => e.id !== id) })}
           />
