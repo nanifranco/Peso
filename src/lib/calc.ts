@@ -116,13 +116,13 @@ export function coachMessage(before: Summary | undefined, after: Summary): strin
   if (!before || before.ws.length === 0) return `¡Arrancamos, ${after.p.name}! Este es tu punto de partida. Cada número que anotes a partir de aquí cuenta tu historia.`
   const prevMin = Math.min(...before.ws.map((w) => w.kg))
   const delta = after.lastRaw - before.current
+  if (delta > 0) return `No pasa nada 💛`
   if (before.daysSinceLast >= 14) {
     return after.lost > 0
       ? `¡Qué gusto verte de vuelta! Sigues ${fmt(after.lost)} kg abajo de donde empezaste. Lo que importa es que regresaste.`
       : `¡Qué gusto verte de vuelta! Volver es la parte más difícil y ya la hiciste.`
   }
   if (after.lastRaw < prevMin) return `🔥 ¡Nuevo mínimo! Nunca habías anotado un número tan bajo. Vas ${fmt(after.lost)} kg abajo en total.`
-  if (delta > 0.3) return `Subir un poquito es normal: agua, sal, la cena de ayer. La báscula es ruidosa, la tendencia es la que manda y esa sigue en ${fmt(after.current)} kg.`
   if (delta < -0.3) return `Bien ahí, ${after.p.name}. Vas ${fmt(after.lost)} kg abajo y la tendencia sigue bajando.`
   return `Estable. Mantenerse también es avanzar: tu cuerpo se está acostumbrando a su nuevo peso.`
 }

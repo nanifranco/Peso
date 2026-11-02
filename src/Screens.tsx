@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import type { Achievement, State } from './lib/types'
-import { bmiCategory, daysBetween, fatness, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
+import { bmiCategory, daysBetween, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
 import { KIND_LABEL, nextWeightMilestone, withHistory } from './lib/achievements'
 import { todayISO } from './lib/store'
-import Avatar from './components/Avatar'
+import { BodyDonut, CompositionChart, MonthlyBars, ProgressRing, WeightChart } from './components/Charts'
 import BmiGauge from './components/BmiGauge'
-import Chart from './components/Chart'
 import { Progress } from './components/ui'
 
 const dateLabel = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -20,8 +19,8 @@ function Delta({ v, unit, goodWhen }: { v?: number; unit: string; goodWhen: 'dow
   )
 }
 
-export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onDeleteEvent }: {
-  state: State; sum: Summary; onAdd: () => void; onAddInBody: () => void; onOpenLogros: () => void; onDeleteEvent: (id: string) => void
+export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenCharts, onDeleteEvent }: {
+  state: State; sum: Summary; onAdd: () => void; onAddInBody: () => void; onOpenLogros: () => void; onOpenCharts: () => void; onDeleteEvent: (id: string) => void
 }) {
   const all = withHistory(state)
   const next = nextWeightMilestone(state)
@@ -34,6 +33,10 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onDeleteEve
   const cat = bmiCategory(sum.curBmi)
   const events = sortByDate(state.events).filter((e) => e.date >= todayISO())
   const lost = Math.max(0, sum.lost)
+  // Con meta: avance a la meta. Sin meta: avance al siguiente escalón de 5% (−5%, −10%, −15%…)
+  const hasGoal = !!p.goalKg && sum.startKg > p.goalKg
+  const nextStep = Math.max(5, Math.ceil((Math.max(0, sum.lostPct) + 0.01) / 5) * 5)
+  const ringPct = hasGoal ? sum.lost / (sum.startKg - p.goalKg!) : sum.lostPct / nextStep
 
   return (
     <div className="space-y-3">
@@ -45,34 +48,35 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onDeleteEve
         {sum.daysSinceLast > 0 && <div className="text-right text-xs text-mute">último registro<br />hace {sum.daysSinceLast} {sum.daysSinceLast === 1 ? 'día' : 'días'}</div>}
       </header>
 
-      {/* Héroe */}
-      <section className="hero relative overflow-hidden rounded-[32px] p-5 pb-4">
-        <div className="relative flex items-stretch gap-2">
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink/50">Llevas</div>
-            <div className="font-display text-[64px] font-extrabold leading-[0.9] tracking-tight">
-              {sum.lost >= 0 ? '−' : '+'}{fmt(Math.abs(sum.lost))}
-            </div>
-            <div className="font-display text-xl font-bold text-ink/60">kilos</div>
-            <div className="mt-4 space-y-2.5 text-sm">
-              <Stat label="Hoy" value={`${fmt(sum.current)} kg`} />
-              <Stat label="Empezaste" value={`${fmt(sum.startKg)} kg`} muted />
-              <Stat label="Grasa" value={`${fmt(sum.fatNow)}%`} hint={lastIB ? 'InBody' : 'estimada'} />
-              {sum.rate !== undefined && <Stat label="Ritmo" value={`${sum.rate <= 0 ? '−' : '+'}${fmt(Math.abs(sum.rate), 2)} kg/sem`} />}
-            </div>
-            {lastEq && lost > 0.5 && (
-              <div className="mt-auto pt-4 text-[13px] leading-snug text-ink/70">
-                <span className="text-xl">{lastEq.emoji}</span> Ya no cargas {lastEq.title.split(': ')[1]}
-              </div>
-            )}
-          </div>
-          <div className="relative -mr-3 flex shrink-0 items-center">
-            <Avatar fat={fatness(sum.fatNow, p.sex)} ghostFat={fatness(sum.fatStart, p.sex)} sex={p.sex} width={160} />
-          </div>
+      {/* Héroe: anillo de progreso */}
+      <section className="hero relative overflow-hidden rounded-[32px] p-5">
+        <div className="flex justify-center">
+          <ProgressRing pct={ringPct} lostKg={sum.lost} caption={hasGoal ? 'de tu meta' : `hacia −${nextStep}%`} size={210} />
         </div>
-        <button onClick={onAdd} className="btn-primary relative mt-3 w-full text-lg">+ Anotar peso</button>
-        {sum.shape > 0.03 && <p className="relative mt-2 text-center text-[11px] text-ink/45">La línea punteada eres tú el día uno</p>}
+        <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+          <Tile label="Hoy" value={fmt(sum.current)} unit="kg" />
+          <Tile label="Inicio" value={fmt(sum.startKg)} unit="kg" />
+          <Tile label="Grasa" value={fmt(sum.fatNow, 0)} unit="%" />
+          <Tile label="Ritmo" value={sum.rate !== undefined ? `${sum.rate <= 0 ? '−' : '+'}${fmt(Math.abs(sum.rate))}` : '—'} unit="kg/sem" />
+        </div>
+        {lastEq && lost > 0.5 && (
+          <div className="mt-3 rounded-2xl bg-white/60 px-3 py-2 text-center text-[13px] text-ink/75">
+            {lastEq.emoji} Ya no cargas {lastEq.title.split(': ')[1]}
+          </div>
+        )}
+        <button onClick={onAdd} className="btn-primary mt-3 w-full text-lg">+ Anotar peso</button>
       </section>
+
+      {/* Mini gráfica */}
+      {sum.ws.length > 1 && (
+        <button onClick={onOpenCharts} className="card block w-full p-4 text-left">
+          <div className="mb-1 flex items-center justify-between">
+            <div className="font-display text-lg font-bold">Tu tendencia</div>
+            <div className="text-sm font-semibold text-coral">Ver gráficas →</div>
+          </div>
+          <WeightChart data={sum.ws} compact height={90} />
+        </button>
+      )}
 
       {/* Siguiente logro */}
       {next && (
@@ -153,11 +157,12 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onDeleteEve
   )
 }
 
-function Stat({ label, value, hint, muted }: { label: string; value: string; hint?: string; muted?: boolean }) {
+function Tile({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 border-b border-ink/10 pb-1.5">
-      <span className="text-ink/55">{label}{hint && <span className="text-[10px] text-ink/40"> · {hint}</span>}</span>
-      <span className={`font-semibold ${muted ? 'text-ink/50' : ''}`}>{value}</span>
+    <div className="rounded-2xl bg-white/60 px-1 py-2">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-ink/45">{label}</div>
+      <div className="font-display text-lg font-extrabold leading-tight">{value}</div>
+      <div className="text-[10px] text-ink/50">{unit}</div>
     </div>
   )
 }
@@ -222,17 +227,41 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody }: { sta
   return (
     <div className="space-y-4">
       <header className="px-1">
-        <h1 className="font-display text-3xl font-extrabold">Historial</h1>
-        <p className="text-sm text-mute">Puntos: lo que marcó la báscula · Línea: tu tendencia real</p>
+        <h1 className="font-display text-3xl font-extrabold">Gráficas</h1>
+        <p className="text-sm text-mute">Toca o desliza sobre las gráficas para ver cada dato</p>
       </header>
+      <section className="card p-4">
+        <h2 className="font-display text-lg font-bold">Peso</h2>
+        <p className="mb-2 text-xs text-mute">
+          <Key c="#E2512F" /> tendencia · <Key c="#2A1F1A" o=".3" dot /> báscula{sum.rate !== undefined && sum.rate < 0 ? <> · <Key c="#E2512F" dash /> a tu ritmo</> : null}
+        </p>
+        <WeightChart data={sum.ws} goal={sum.p.goalKg} rate={sum.rate} inbodyDates={state.inbodies.map((i) => i.date)} />
+      </section>
+      <section className="card p-4">
+        <h2 className="font-display text-lg font-bold">Kilos por mes</h2>
+        <p className="mb-2 text-xs text-mute">Cuánto cambió tu peso cada mes</p>
+        <MonthlyBars data={state.weighIns} />
+      </section>
       <section className="card p-5">
         <h2 className="mb-1 font-display text-lg font-bold">IMC</h2>
         <BmiGauge value={sum.curBmi} start={sum.startBmi} />
         <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
       </section>
-      <section className="card p-4">
-        <Chart data={sum.ws} goal={sum.p.goalKg} inbodyDates={state.inbodies.map((i) => i.date)} />
-      </section>
+      {sum.lastIB && (
+        <section className="card space-y-4 p-4">
+          <div>
+            <h2 className="font-display text-lg font-bold">De qué estás hecha</h2>
+            <p className="mb-3 text-xs text-mute">Tu último InBody ({dateLabel(sum.lastIB.date)})</p>
+            <BodyDonut ib={sum.lastIB} />
+          </div>
+          <div>
+            <h2 className="font-display text-lg font-bold">Grasa vs. músculo</h2>
+            <p className="mb-2 text-xs text-mute"><Key c="#E2512F" /> grasa · <Key c="#3F6FD8" /> músculo (kg)</p>
+            <CompositionChart ib={state.inbodies} />
+          </div>
+        </section>
+      )}
+      <h2 className="px-1 pt-2 font-display text-lg font-bold">Registros</h2>
       <section className="card divide-y divide-line overflow-hidden">
         {rows.map((r) => (
           <div key={r.id} className="flex items-center gap-3 px-4 py-3">
@@ -260,4 +289,9 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody }: { sta
       </section>
     </div>
   )
+}
+
+function Key({ c, o = '1', dot, dash }: { c: string; o?: string; dot?: boolean; dash?: boolean }) {
+  if (dot) return <span className="inline-block h-2 w-2 rounded-full align-middle" style={{ background: c, opacity: o }} />
+  return <span className="inline-block w-4 align-middle" style={{ borderTop: `2.5px ${dash ? 'dotted' : 'solid'} ${c}` }} />
 }

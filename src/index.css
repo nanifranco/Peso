@@ -133,3 +133,8 @@ body {
 }
 .sway-l { transform-origin: 80% 10%; --r: 5deg; }
 .sway-r { transform-origin: 20% 10%; --r: -5deg; }
+
+/* Líquido del anillo */
+@keyframes wave { from { transform: translateX(0); } to { transform: translateX(80px); } }
+.wave-a { animation: wave 3.2s linear infinite; }
+.wave-b { animation: wave 4.6s linear infinite reverse; }

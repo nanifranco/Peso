@@ -7,7 +7,6 @@ import { sortByDate } from './lib/calc'
 import { Celebration, Sheet, Toast } from './components/ui'
 import { EventForm, InBodyForm, ProfileForm, WeighInForm } from './components/Forms'
 import { Historial, Home, Logros } from './Screens'
-import Avatar from './components/Avatar'
 
 type Tab = 'inicio' | 'logros' | 'historial' | 'ajustes'
 type SheetKind = null | 'peso' | 'inbody' | 'evento' | 'menu'
@@ -32,10 +31,10 @@ export default function App() {
   const sum = useMemo(() => (ready ? summary(state) : undefined), [state, ready])
 
   /** Aplica un cambio, detecta logros nuevos y los celebra */
-  const commit = (next: State, message?: (after: ReturnType<typeof summary>) => string) => {
+  const commit = (next: State, message?: (after: ReturnType<typeof summary>) => string, quiet = false) => {
     const { state: synced, fresh } = syncUnlocked(next)
     setState(synced)
-    if (fresh.length) setQueue((q) => [...q, ...fresh.sort((a, b) => Number(!!b.big) - Number(!!a.big))])
+    if (fresh.length && !quiet) setQueue((q) => [...q, ...fresh.sort((a, b) => Number(!!b.big) - Number(!!a.big))])
     if (message && synced.profile && synced.weighIns.length) setToast(message(summary(synced)))
   }
 
@@ -43,7 +42,7 @@ export default function App() {
     return (
       <div className="safe-top safe-bottom mx-auto flex min-h-dvh max-w-md flex-col px-5">
         <div className="flex flex-col items-center pt-4 text-center">
-          <Avatar fat={0.55} width={96} />
+          <img src="./icon.svg" alt="" width={88} height={88} className="mt-4 rounded-[22px] shadow-lg" />
           <h1 className="mt-2 font-display text-4xl font-extrabold">Peso</h1>
           <p className="mt-2 text-mute">Anota cuando quieras. Yo me encargo de celebrar cada cosa que logres: kilos, grasa, músculo y salud.</p>
         </div>
@@ -70,6 +69,17 @@ export default function App() {
         >
           Ver con datos de ejemplo
         </button>
+        <label className="mx-auto mt-3 cursor-pointer text-sm font-semibold text-ink/60 underline underline-offset-4">
+          Tengo un respaldo (.json)
+          <input type="file" accept="application/json,.json" className="hidden" onChange={async (e) => {
+            const f = e.target.files?.[0]
+            if (!f) return
+            try {
+              const { state: synced } = syncUnlocked(normalize({ ...emptyState(), ...JSON.parse(await f.text()) }))
+              setState(synced)
+            } catch { /* archivo inválido */ }
+          }} />
+        </label>
       </div>
     )
   }
@@ -86,6 +96,7 @@ export default function App() {
             onAdd={() => setSheet('peso')}
             onAddInBody={() => setSheet('inbody')}
             onOpenLogros={() => setTab('logros')}
+            onOpenCharts={() => setTab('historial')}
             onDeleteEvent={(id) => setState({ ...state, events: state.events.filter((e) => e.id !== id) })}
           />
         )}
@@ -98,7 +109,7 @@ export default function App() {
             onDeleteInBody={(id) => setState({ ...state, inbodies: state.inbodies.filter((i) => i.id !== id) })}
           />
         )}
-        {tab === 'ajustes' && <Ajustes state={state} onChange={(n) => commit(n)} onReset={() => { setState(emptyState()); setTab('inicio') }} />}
+        {tab === 'ajustes' && <Ajustes state={state} onChange={(n) => commit(n, undefined, true)} onReset={() => { setState(emptyState()); setTab('inicio') }} />}
       </div>
 
       {/* Barra inferior */}
@@ -107,7 +118,7 @@ export default function App() {
           {([
             ['inicio', '🏠', 'Inicio'],
             ['logros', '🏆', 'Logros'],
-            ['historial', '📈', 'Historial'],
+            ['historial', '📊', 'Gráficas'],
             ['ajustes', '⚙️', 'Ajustes'],
           ] as [Tab, string, string][]).map(([t, ic, l]) => (
             <button key={t} onClick={() => setTab(t)} className={`flex flex-1 flex-col items-center rounded-3xl py-1.5 text-[11px] font-semibold transition ${tab === t ? 'bg-cream text-ink' : 'text-mute'}`}>
@@ -140,7 +151,10 @@ export default function App() {
           last={s.lastRaw}
           onSave={(w) => {
             setSheet(null)
-            commit({ ...state, weighIns: [...state.weighIns, w] }, (after) => coachMessage(s, after))
+            // Si subiste respecto a tu último registro: nada de festejos, solo "no pasa nada"
+            const prev = sortByDate(state.weighIns).filter((x) => x.date <= w.date).pop()
+            const up = !!prev && w.kg > prev.kg
+            commit({ ...state, weighIns: [...state.weighIns, w] }, (after) => coachMessage(s, after), up)
           }}
         />
       </Sheet>
@@ -205,7 +219,7 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
         <p className="text-sm text-mute">Todo vive solo en este teléfono. Haz un respaldo de vez en cuando.</p>
         <button onClick={exportData} className="btn-ghost w-full">⬇️ Descargar respaldo</button>
         <button onClick={() => fileRef.current?.click()} className="btn-ghost w-full">⬆️ Restaurar respaldo</button>
-        <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={async (e) => {
+        <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={async (e) => {
           const f = e.target.files?.[0]
           if (!f) return
           try { onChange(normalize({ ...emptyState(), ...JSON.parse(await f.text()) })) } catch { /* archivo inválido */ }

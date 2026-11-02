@@ -1,0 +1,286 @@
+import { useId, useState, type PointerEvent } from 'react'
+import type { InBody } from '../lib/types'
+import { daysBetween, fmt, sortByDate } from '../lib/calc'
+
+const INK = '#2A1F1A'
+const MUTE = '#8A7D72'
+const GRID = '#EEE3D3'
+const CORAL = '#E2512F'
+const BLUE = '#3F6FD8'
+const GREEN = '#2FB37A'
+const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const short = (s: string) => {
+  const d = new Date(s + 'T12:00:00')
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`
+}
+const addDaysISO = (s: string, n: number) => {
+  const d = new Date(s + 'T12:00:00')
+  d.setDate(d.getDate() + n)
+  return iso(d)
+}
+
+/* ------------------------------------------------------------------ */
+/* Anillo de progreso con "tanque" de líquido adentro                  */
+/* ------------------------------------------------------------------ */
+export function ProgressRing({ pct, lostKg, caption, size = 200 }: { pct: number; lostKg: number; caption: string; size?: number }) {
+  const id = useId().replace(/:/g, '')
+  const p = Math.max(0, Math.min(1, pct))
+  const R = 84, C = 2 * Math.PI * R
+  const inner = 68
+  const level = 100 + inner - p * inner * 2 // y del nivel del líquido
+  const wave = (y: number, amp: number) =>
+    `M -300 ${y} ${Array.from({ length: 16 }).map((_, i) => `q 20 ${i % 2 ? amp : -amp} 40 0`).join(' ')} V 260 H -300 Z`
+  return (
+    <svg viewBox="0 0 200 200" width={size} height={size} role="img" aria-label={`${Math.round(p * 100)}% ${caption}`}>
+      <defs>
+        <linearGradient id={`rg-${id}`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFB347" />
+          <stop offset="1" stopColor={CORAL} />
+        </linearGradient>
+        <clipPath id={`in-${id}`}><circle cx="100" cy="100" r={inner} /></clipPath>
+      </defs>
+      <circle cx="100" cy="100" r={R} fill="none" stroke={GRID} strokeWidth="14" />
+      <circle
+        cx="100" cy="100" r={R} fill="none" stroke={`url(#rg-${id})`} strokeWidth="14" strokeLinecap="round"
+        strokeDasharray={`${C * Math.max(0.005, p)} ${C}`} transform="rotate(-90 100 100)"
+        style={{ transition: 'stroke-dasharray 1s cubic-bezier(.3,.8,.3,1)' }}
+      />
+      <circle cx="100" cy="100" r={inner} fill="#FFF6EA" />
+      <g clipPath={`url(#in-${id})`}>
+        <g style={{ transform: `translateY(${level - 100}px)`, transition: 'transform 1s cubic-bezier(.3,.8,.3,1)' }}>
+          <path className="wave-a" d={wave(100, 5)} fill="#FFB347" opacity=".35" />
+          <path className="wave-b" d={wave(103, 4)} fill={CORAL} opacity=".28" />
+        </g>
+      </g>
+      <text x="100" y="98" textAnchor="middle" fontSize="40" fontWeight="800" fill={INK} className="font-display">{lostKg >= 0 ? '−' : '+'}{fmt(Math.abs(lostKg))}</text>
+      <text x="100" y="118" textAnchor="middle" fontSize="12" fontWeight="600" fill={MUTE}>kilos</text>
+      <text x="100" y="138" textAnchor="middle" fontSize="11" fontWeight="700" fill={CORAL}>{Math.round(p * 100)}% {caption}</text>
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Peso: puntos reales, línea de tendencia, meta y proyección          */
+/* ------------------------------------------------------------------ */
+interface WP { date: string; kg: number; trend: number }
+
+export function WeightChart({ data, goal, rate, inbodyDates = [], height = 190, compact = false }: {
+  data: WP[]; goal?: number; rate?: number; inbodyDates?: string[]; height?: number; compact?: boolean
+}) {
+  const [hover, setHover] = useState<number | null>(null)
+  const gid = useId().replace(/:/g, '')
+  if (data.length < 2) return <p className="py-8 text-center text-sm text-mute">Anota otro peso para ver tu gráfica.</p>
+  const W = 340, H = height, pl = compact ? 6 : 30, pr = compact ? 6 : 10, pt = 14, pb = compact ? 8 : 22
+  const d0 = data[0].date
+  const last = data[data.length - 1]
+  // Proyección hasta la meta (o 8 semanas) si vas bajando
+  let proj: { date: string; kg: number } | undefined
+  if (!compact && rate !== undefined && rate < -0.02) {
+    const target = goal && goal < last.kg ? goal : last.kg + rate * 8
+    const weeks = Math.min(52, (target - last.kg) / rate)
+    proj = { date: addDaysISO(last.date, Math.round(weeks * 7)), kg: last.kg + rate * weeks }
+  }
+  const endDate = proj?.date ?? last.date
+  const span = Math.max(1, daysBetween(d0, endDate))
+  const vals = data.flatMap((d) => [d.kg, d.trend]).concat(proj ? [proj.kg] : []).concat(goal && !compact ? [goal] : [])
+  const lo = Math.floor(Math.min(...vals) - 1), hi = Math.ceil(Math.max(...vals) + 1)
+  const x = (date: string) => pl + (daysBetween(d0, date) / span) * (W - pl - pr)
+  const y = (kg: number) => pt + ((hi - kg) / (hi - lo)) * (H - pt - pb)
+  const trend = data.map((d, i) => `${i ? 'L' : 'M'} ${x(d.date).toFixed(1)} ${y(d.trend).toFixed(1)}`).join(' ')
+  const area = `${trend} L ${x(last.date)} ${H - pb} L ${pl} ${H - pb} Z`
+  const months: { x: number; l: string }[] = []
+  const s = new Date(d0 + 'T12:00:00')
+  for (let m = new Date(s.getFullYear(), s.getMonth() + 1, 1); daysBetween(d0, iso(m)) <= span; m.setMonth(m.getMonth() + 1)) months.push({ x: x(iso(m)), l: MONTHS[m.getMonth()] })
+  const ticks = 4
+  const move = (e: PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const px = ((e.clientX - r.left) / r.width) * W
+    let best = 0
+    data.forEach((d, i) => { if (Math.abs(x(d.date) - px) < Math.abs(x(data[best].date) - px)) best = i })
+    setHover(best)
+  }
+  const h = hover !== null ? data[hover] : null
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full touch-none select-none" onPointerMove={move} onPointerDown={move} onPointerLeave={() => setHover(null)}>
+      <defs>
+        <linearGradient id={`ar-${gid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CORAL} stopOpacity=".2" />
+          <stop offset="1" stopColor={CORAL} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {!compact && Array.from({ length: ticks + 1 }).map((_, i) => {
+        const v = lo + ((hi - lo) * i) / ticks
+        return (
+          <g key={i}>
+            <line x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} stroke={GRID} />
+            <text x={pl - 5} y={y(v) + 3} fontSize="9" textAnchor="end" fill={MUTE}>{Math.round(v)}</text>
+          </g>
+        )
+      })}
+      {!compact && months.map((m) => <text key={m.x} x={m.x} y={H - 6} fontSize="9" textAnchor="middle" fill={MUTE}>{m.l}</text>)}
+      {!compact && goal && goal >= lo && goal <= hi && (
+        <g>
+          <line x1={pl} x2={W - pr} y1={y(goal)} y2={y(goal)} stroke={GREEN} strokeDasharray="4 4" strokeWidth="1.5" />
+          <text x={pl + 4} y={y(goal) - 4} fontSize="9" fill="#1E8A5B" fontWeight="700">meta {fmt(goal)}</text>
+        </g>
+      )}
+      {!compact && inbodyDates.map((d) => d >= d0 && <line key={d} x1={x(d)} x2={x(d)} y1={pt} y2={H - pb} stroke={BLUE} strokeOpacity=".35" strokeDasharray="2 3" />)}
+      <path d={area} fill={`url(#ar-${gid})`} />
+      {proj && (
+        <g>
+          <line x1={x(last.date)} y1={y(last.trend)} x2={x(proj.date)} y2={y(proj.kg)} stroke={CORAL} strokeWidth="2" strokeDasharray="2 4" strokeLinecap="round" />
+          <circle cx={x(proj.date)} cy={y(proj.kg)} r="4" fill="#fff" stroke={CORAL} strokeWidth="2" />
+          <text x={x(proj.date) - 6} y={y(proj.kg) - 9} fontSize="9" textAnchor="end" fill={INK} fontWeight="700">~{short(proj.date)}</text>
+        </g>
+      )}
+      {!compact && data.map((d) => <circle key={d.date + d.kg} cx={x(d.date)} cy={y(d.kg)} r="2.6" fill={INK} opacity=".28" />)}
+      <path d={trend} fill="none" stroke={CORAL} strokeWidth={compact ? 3 : 2.5} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={x(last.date)} cy={y(last.trend)} r="4.5" fill={CORAL} stroke="#fff" strokeWidth="2" />
+      {h && (
+        <g pointerEvents="none">
+          <line x1={x(h.date)} x2={x(h.date)} y1={pt} y2={H - pb} stroke={INK} strokeOpacity=".25" />
+          <circle cx={x(h.date)} cy={y(h.kg)} r="5" fill="#fff" stroke={INK} strokeWidth="2" />
+          {(() => {
+            const bx = Math.min(W - pr - 92, Math.max(pl, x(h.date) - 46))
+            return (
+              <g>
+                <rect x={bx} y={pt - 2} width="92" height="34" rx="8" fill={INK} />
+                <text x={bx + 46} y={pt + 12} textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff">{fmt(h.kg)} kg</text>
+                <text x={bx + 46} y={pt + 25} textAnchor="middle" fontSize="9" fill="#D9CFC4">{short(h.date)} · tend. {fmt(h.trend)}</text>
+              </g>
+            )
+          })()}
+        </g>
+      )}
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Kilos por mes (barras)                                              */
+/* ------------------------------------------------------------------ */
+export function MonthlyBars({ data }: { data: { date: string; kg: number }[] }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const s = sortByDate(data)
+  if (s.length < 2) return <p className="py-6 text-center text-sm text-mute">Necesitas registros en al menos dos fechas.</p>
+  // último peso de cada mes; el cambio de cada mes es contra el último peso del mes anterior (o el primero)
+  const byMonth = new Map<string, number>()
+  s.forEach((w) => byMonth.set(w.date.slice(0, 7), w.kg))
+  const keys = [...byMonth.keys()]
+  let prev = s[0].kg
+  const bars = keys.map((k) => {
+    const v = byMonth.get(k)!
+    const d = v - prev
+    prev = v
+    return { k, d }
+  }).filter((b, i) => i > 0 || Math.abs(b.d) >= 0.05).slice(-8)
+  const W = 340, H = 150, pt = 18, pb = 22
+  const up = Math.max(0, ...bars.map((b) => b.d))
+  const dn = Math.max(0, ...bars.map((b) => -b.d))
+  const total = Math.max(0.5, up + dn)
+  const zero = pt + ((H - pt - pb - 12) * up) / total
+  const scale = (H - pt - pb - 12) / total
+  const bw = Math.min(30, (W - 20) / bars.length - 10)
+  const step = (W - 20) / bars.length
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full select-none">
+      <line x1="6" x2={W - 6} y1={zero} y2={zero} stroke={GRID} strokeWidth="1.5" />
+      {bars.map((b, i) => {
+        const cx = 10 + step * i + step / 2
+        const hgt = Math.max(2, Math.abs(b.d) * scale)
+        const down = b.d <= 0
+        const yTop = down ? zero : zero - hgt
+        const hh = hgt
+        const m = Number(b.k.slice(5)) - 1
+        return (
+          <g key={b.k} onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)} onPointerDown={() => setHover(i)}>
+            <rect x={cx - step / 2} y={pt - 14} width={step} height={H} fill="transparent" />
+            <rect x={cx - bw / 2} y={yTop} width={bw} height={hh} rx="4" fill={down ? CORAL : '#CBBFB2'} opacity={hover === null || hover === i ? 1 : 0.45} />
+            <text x={cx} y={down ? zero + hh + 11 : yTop - 4} fontSize="9.5" fontWeight="700" textAnchor="middle" fill={INK}>
+              {(hover === i || bars.length <= 6) ? `${b.d <= 0 ? '−' : '+'}${fmt(Math.abs(b.d))}` : ''}
+            </text>
+            <text x={cx} y={H - 5} fontSize="9" textAnchor="middle" fill={MUTE}>{MONTHS[m]}</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* InBody: grasa vs músculo en el tiempo                               */
+/* ------------------------------------------------------------------ */
+export function CompositionChart({ ib }: { ib: InBody[] }) {
+  const s = sortByDate(ib).filter((i) => i.fatKg != null || i.muscleKg != null)
+  if (s.length < 2) return <p className="py-6 text-center text-sm text-mute">Con dos InBody o más aparece aquí cómo cambian tu grasa y tu músculo.</p>
+  const W = 340, H = 170, pl = 30, pr = 78, pt = 12, pb = 22
+  const vals = s.flatMap((i) => [i.fatKg, i.muscleKg].filter((v): v is number => v != null))
+  const lo = Math.floor(Math.min(...vals) - 2), hi = Math.ceil(Math.max(...vals) + 2)
+  const span = Math.max(1, daysBetween(s[0].date, s[s.length - 1].date))
+  const x = (d: string) => pl + (daysBetween(s[0].date, d) / span) * (W - pl - pr)
+  const y = (v: number) => pt + ((hi - v) / (hi - lo)) * (H - pt - pb)
+  const line = (k: 'fatKg' | 'muscleKg') => s.filter((i) => i[k] != null).map((i, n) => `${n ? 'L' : 'M'} ${x(i.date)} ${y(i[k]!)}`).join(' ')
+  const lastF = [...s].reverse().find((i) => i.fatKg != null)
+  const lastM = [...s].reverse().find((i) => i.muscleKg != null)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      {[0, 1, 2, 3].map((i) => {
+        const v = lo + ((hi - lo) * i) / 3
+        return (
+          <g key={i}>
+            <line x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} stroke={GRID} />
+            <text x={pl - 5} y={y(v) + 3} fontSize="9" textAnchor="end" fill={MUTE}>{Math.round(v)}</text>
+          </g>
+        )
+      })}
+      {s.map((i) => <text key={i.id} x={x(i.date)} y={H - 6} fontSize="9" textAnchor="middle" fill={MUTE}>{short(i.date)}</text>)}
+      {(['fatKg', 'muscleKg'] as const).map((k) => (
+        <g key={k}>
+          <path d={line(k)} fill="none" stroke={k === 'fatKg' ? CORAL : BLUE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {s.filter((i) => i[k] != null).map((i) => <circle key={i.id} cx={x(i.date)} cy={y(i[k]!)} r="4.5" fill={k === 'fatKg' ? CORAL : BLUE} stroke="#fff" strokeWidth="2" />)}
+        </g>
+      ))}
+      {lastF && <text x={x(lastF.date) + 9} y={y(lastF.fatKg!) + 4} fontSize="10" fontWeight="700" fill={INK}>Grasa {fmt(lastF.fatKg!)}</text>}
+      {lastM && <text x={x(lastM.date) + 9} y={y(lastM.muscleKg!) + 4} fontSize="10" fontWeight="700" fill={INK}>Músculo {fmt(lastM.muscleKg!)}</text>}
+    </svg>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* De qué estás hecha (dona del último InBody)                         */
+/* ------------------------------------------------------------------ */
+export function BodyDonut({ ib }: { ib?: InBody }) {
+  if (!ib?.kg || ib.fatKg == null) return null
+  const fat = ib.fatKg, mus = ib.muscleKg ?? 0, rest = Math.max(0, ib.kg - fat - mus)
+  const parts = [
+    { l: 'Grasa', v: fat, c: CORAL },
+    { l: 'Músculo', v: mus, c: BLUE },
+    { l: 'Agua, hueso y órganos', v: rest, c: '#CBBFB2' },
+  ].filter((p) => p.v > 0)
+  const R = 46, C = 2 * Math.PI * R
+  let acc = 0
+  return (
+    <div className="flex items-center gap-4">
+      <svg viewBox="0 0 120 120" width="120" height="120" className="shrink-0">
+        {parts.map((p) => {
+          const len = (p.v / ib.kg!) * C
+          const el = <circle key={p.l} cx="60" cy="60" r={R} fill="none" stroke={p.c} strokeWidth="16" strokeDasharray={`${Math.max(0, len - 2)} ${C}`} strokeDashoffset={-acc} transform="rotate(-90 60 60)" />
+          acc += len
+          return el
+        })}
+        <text x="60" y="58" textAnchor="middle" fontSize="18" fontWeight="800" fill={INK}>{fmt(ib.kg)}</text>
+        <text x="60" y="73" textAnchor="middle" fontSize="9" fill={MUTE}>kg</text>
+      </svg>
+      <div className="flex-1 space-y-2 text-sm">
+        {parts.map((p) => (
+          <div key={p.l} className="flex items-center gap-2">
+            <span className="h-3 w-3 shrink-0 rounded-[4px]" style={{ background: p.c }} />
+            <span className="flex-1 text-ink/70">{p.l}</span>
+            <b>{fmt(p.v)} kg</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

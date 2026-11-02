@@ -1,8 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#FF6B4A"/>
-  <circle cx="256" cy="150" r="54" fill="#FBF5EC"/>
-  <path d="M176 230 Q256 208 336 230 Q350 320 312 410 L200 410 Q162 320 176 230Z" fill="#FBF5EC"/>
-  <circle cx="380" cy="300" r="22" fill="#FFD166"/>
-  <circle cx="410" cy="240" r="14" fill="#FFD166" opacity=".8"/>
-  <circle cx="400" cy="190" r="8" fill="#FFD166" opacity=".6"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB347"/><stop offset="1" stop-color="#E2512F"/></linearGradient>
+    <clipPath id="c"><circle cx="256" cy="256" r="128"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#FFF6EA"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#EEE3D3" stroke-width="36"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#g)" stroke-width="36" stroke-linecap="round" stroke-dasharray="700 1006" transform="rotate(-90 256 256)"/>
+  <g clip-path="url(#c)">
+    <path d="M 100 270 q 40 -22 80 0 t 80 0 t 80 0 t 80 0 t 80 0 V 420 H 100 Z" fill="#E2512F" opacity=".85"/>
+  </g>
 </svg>
