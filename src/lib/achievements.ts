@@ -187,6 +187,6 @@ export const KIND_LABEL: Record<string, string> = {
   salud: 'Salud',
   cuerpo: 'Cuerpo (InBody)',
   meta: 'Mini-metas',
-  equivalencia: 'Inventario',
+  equivalencia: 'Lo que ya no cargas',
   constancia: 'Constancia',
 }

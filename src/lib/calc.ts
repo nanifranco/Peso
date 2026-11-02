@@ -121,26 +121,3 @@ export function coachMessage(before: Summary | undefined, after: Summary): strin
   if (delta < -0.3) return `Bien ahí, ${after.p.name}. Vas ${fmt(after.lost)} kg abajo y la tendencia sigue bajando.`
   return `Estable. Mantenerse también es avanzar: tu cuerpo se está acostumbrando a su nuevo peso.`
 }
-
-/**
- * % de grasa estimado para un peso dado.
- * Con InBody: se asume la masa magra del último estudio (lo que no es grasa casi no cambia).
- * Sin InBody: fórmula de Deurenberg a partir del IMC (edad asumida 25).
- */
-export function estBodyFat(kg: number, state: State): number {
-  const p = state.profile as Profile
-  const ib = sortByDate(state.inbodies).filter((i) => i.fatPct != null && i.kg != null)
-  if (ib.length) {
-    const last = ib[ib.length - 1]
-    const leanKg = last.kg! * (1 - last.fatPct! / 100)
-    return Math.max(4, ((kg - leanKg) / kg) * 100)
-  }
-  const b = bmi(kg, p.heightCm)
-  return Math.max(4, 1.2 * b + 0.23 * 25 - 10.8 * (p.sex === 'h' ? 1 : 0) - 5.4)
-}
-
-/** 0 = muy definido, 1 = mucha grasa — lo que usa el avatar */
-export function fatness(bodyFatPct: number, sex: Profile['sex']) {
-  const [lo, hi] = sex === 'h' ? [9, 42] : [17, 50]
-  return Math.max(0, Math.min(1, (bodyFatPct - lo) / (hi - lo)))
-}

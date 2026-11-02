@@ -6,9 +6,7 @@ import { demoState, emptyState, loadState, saveState, todayISO, uid } from './li
 import { Celebration, Sheet, Toast } from './components/ui'
 import { EventForm, InBodyForm, ProfileForm, WeighInForm } from './components/Forms'
 import { Historial, Home, Logros } from './Screens'
-import PixelEmoji from './components/PixelEmoji'
-import Sprite from './components/Sprite'
-import { coin, levelUp } from './lib/sound'
+import Avatar from './components/Avatar'
 
 type Tab = 'inicio' | 'logros' | 'historial' | 'ajustes'
 type SheetKind = null | 'peso' | 'inbody' | 'evento' | 'menu'
@@ -37,7 +35,6 @@ export default function App() {
     const { state: synced, fresh } = syncUnlocked(next)
     setState(synced)
     if (fresh.length) setQueue((q) => [...q, ...fresh.sort((a, b) => Number(!!b.big) - Number(!!a.big))])
-    else if (message) coin()
     if (message && synced.profile && synced.weighIns.length) setToast(message(summary(synced)))
   }
 
@@ -45,11 +42,9 @@ export default function App() {
     return (
       <div className="safe-top safe-bottom mx-auto flex min-h-dvh max-w-md flex-col px-5">
         <div className="flex flex-col items-center pt-4 text-center">
-          <Sprite fat={0.55} sex="h" px={4} />
-          <h1 className="mt-4 font-display text-4xl text-coral glow-y">PESO</h1>
-          <div className="mt-3 font-display text-[10px] text-pink glow-p">MODO ARCADE</div>
-          <p className="mt-3 text-2xl leading-tight text-mute">Anota cuando quieras. Cada kilo es score, cada logro es un LEVEL UP y tu personaje cambia contigo.</p>
-          <p className="blink mt-3 font-display text-[10px]">PRESS START</p>
+          <Avatar shape={0} lostKg={0} size={130} />
+          <h1 className="mt-2 font-display text-4xl font-extrabold">Peso</h1>
+          <p className="mt-2 text-mute">Anota cuando quieras. Yo me encargo de celebrar cada cosa que logres: kilos, grasa, músculo y salud.</p>
         </div>
         <div className="card mt-6 p-5">
           <ProfileForm
@@ -69,9 +64,9 @@ export default function App() {
             setState(synced)
             setQueue(fresh.filter((a) => a.big).slice(0, 2))
           }}
-          className="mx-auto mt-5 font-display text-[10px] text-sky underline underline-offset-4"
+          className="mx-auto mt-4 text-sm font-semibold text-coral underline underline-offset-4"
         >
-          DEMO: ver con datos de ejemplo
+          Ver con datos de ejemplo
         </button>
       </div>
     )
@@ -107,35 +102,35 @@ export default function App() {
 
       {/* Barra inferior */}
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-4">
-        <div className="flex items-center gap-1.5 rounded-[10px] border-[3px] border-wall bg-cream/95 p-1.5 shadow-[0_0_20px_-4px_#2a2aff]">
+        <div className="flex items-center gap-2 rounded-[28px] border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur">
           {([
-            ['inicio', '🕹️', 'INICIO'],
-            ['logros', '🏆', 'LOGROS'],
-            ['historial', '📈', 'HISTORIAL'],
-            ['ajustes', '⚙️', 'AJUSTES'],
+            ['inicio', '🏠', 'Inicio'],
+            ['logros', '🏆', 'Logros'],
+            ['historial', '📈', 'Historial'],
+            ['ajustes', '⚙️', 'Ajustes'],
           ] as [Tab, string, string][]).map(([t, ic, l]) => (
-            <button key={t} onClick={() => setTab(t)} className={`flex flex-1 flex-col items-center gap-1 rounded-md py-1.5 font-display text-[7px] transition ${tab === t ? 'bg-line text-coral' : 'text-mute'}`}>
-              <PixelEmoji e={ic} size={22} dim={tab !== t} />
+            <button key={t} onClick={() => setTab(t)} className={`flex flex-1 flex-col items-center rounded-3xl py-1.5 text-[11px] font-semibold transition ${tab === t ? 'bg-cream text-ink' : 'text-mute'}`}>
+              <span className={`text-lg ${tab === t ? '' : 'grayscale opacity-70'}`}>{ic}</span>
               {l}
             </button>
           ))}
-          <button onClick={() => setSheet('menu')} className="grid h-14 w-14 shrink-0 place-items-center rounded-md bg-coral font-display text-2xl text-cream shadow-[0_4px_0_#a89700] active:translate-y-[3px]" aria-label="Agregar">+</button>
+          <button onClick={() => setSheet('menu')} className="grid h-14 w-14 shrink-0 place-items-center rounded-3xl bg-coral text-3xl font-light text-white shadow-md active:scale-95" aria-label="Agregar">+</button>
         </div>
       </nav>
 
       <Sheet open={sheet === 'menu'} onClose={() => setSheet(null)} title="¿Qué anotamos?">
         <div className="grid gap-3 pb-4">
           <button onClick={() => setSheet('peso')} className="card flex items-center gap-4 p-4 text-left">
-            <PixelEmoji e="⚖️" size={44} />
-            <span><b className="font-display text-[12px]">PESO</b><br /><span className="text-xl text-mute">Lo de la báscula, con nota si quieres</span></span>
+            <span className="text-4xl">⚖️</span>
+            <span><b className="font-display text-lg">Peso</b><br /><span className="text-sm text-mute">Lo de la báscula, con nota si quieres</span></span>
           </button>
           <button onClick={() => setSheet('inbody')} className="card flex items-center gap-4 p-4 text-left">
-            <PixelEmoji e="🔬" size={44} />
-            <span><b className="font-display text-[12px]">INBODY</b><br /><span className="text-xl text-mute">Grasa, músculo y visceral</span></span>
+            <span className="text-4xl">🔬</span>
+            <span><b className="font-display text-lg">InBody</b><br /><span className="text-sm text-mute">Grasa, músculo y visceral</span></span>
           </button>
           <button onClick={() => setSheet('evento')} className="card flex items-center gap-4 p-4 text-left">
-            <PixelEmoji e="📅" size={44} />
-            <span><b className="font-display text-[12px]">MISIÓN</b><br /><span className="text-xl text-mute">Una fecha para la que quieres llegar bien</span></span>
+            <span className="text-4xl">📅</span>
+            <span><b className="font-display text-lg">Evento</b><br /><span className="text-sm text-mute">Una fecha para la que quieres llegar bien</span></span>
           </button>
         </div>
       </Sheet>
@@ -159,12 +154,12 @@ export default function App() {
           }}
         />
       </Sheet>
-      <Sheet open={sheet === 'evento'} onClose={() => setSheet(null)} title="Nueva misión">
+      <Sheet open={sheet === 'evento'} onClose={() => setSheet(null)} title="Nuevo evento">
         <EventForm onSave={(e) => { setSheet(null); setState({ ...state, events: [...state.events, e] }) }} />
       </Sheet>
 
       {toast && queue.length === 0 && <Toast text={toast} onClose={() => setToast(null)} />}
-      <Celebration queue={queue} onShow={(a) => levelUp(a.big)} onNext={() => setQueue((q) => q.slice(1))} />
+      <Celebration queue={queue} onNext={() => setQueue((q) => q.slice(1))} />
     </div>
   )
 }
@@ -182,13 +177,13 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
   }
   return (
     <div className="space-y-4">
-      <h1 className="px-1 font-display text-lg text-coral glow-y">AJUSTES</h1>
+      <h1 className="px-1 font-display text-3xl font-extrabold">Ajustes</h1>
       <section className="card p-5">
         <ProfileForm initial={state.profile} cta={saved ? '✓ Guardado' : 'Guardar cambios'} onSave={(p) => { onChange({ ...state, profile: p }); setSaved(true); setTimeout(() => setSaved(false), 1500) }} />
       </section>
       <section className="card space-y-3 p-5">
-        <h2 className="font-display text-[12px] text-sky glow-c">TUS DATOS</h2>
-        <p className="text-xl leading-tight text-mute">Todo vive solo en este teléfono. Haz un respaldo de vez en cuando.</p>
+        <h2 className="font-display text-xl font-bold">Tus datos</h2>
+        <p className="text-sm text-mute">Todo vive solo en este teléfono. Haz un respaldo de vez en cuando.</p>
         <button onClick={exportData} className="btn-ghost w-full">⬇️ Descargar respaldo</button>
         <button onClick={() => fileRef.current?.click()} className="btn-ghost w-full">⬆️ Restaurar respaldo</button>
         <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={async (e) => {
@@ -202,7 +197,7 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
           <button onClick={() => setConfirm(true)} className="btn w-full text-coral">Borrar todo y empezar de nuevo</button>
         )}
       </section>
-      <p className="px-1 pb-4 text-center text-lg text-mute">Los mensajes de salud son orientativos, no sustituyen a un médico.</p>
+      <p className="px-1 pb-4 text-center text-xs text-mute">Los mensajes de salud son orientativos, no sustituyen a un médico.</p>
     </div>
   )
 }

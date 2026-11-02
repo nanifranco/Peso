@@ -1,75 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { Achievement, State } from './lib/types'
-import { bmiCategory, daysBetween, estBodyFat, fatness, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
+import { daysBetween, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
 import { KIND_LABEL, nextWeightMilestone, withHistory } from './lib/achievements'
 import { todayISO } from './lib/store'
-import { blip, setSound, soundOn } from './lib/sound'
-import Sprite, { type PowerUps } from './components/Sprite'
-import PixelEmoji from './components/PixelEmoji'
+import Avatar from './components/Avatar'
 import BmiGauge from './components/BmiGauge'
 import Chart from './components/Chart'
 import { Progress } from './components/ui'
 
 const dateLabel = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
-const pad = (n: number, w = 3) => {
-  const [i, d] = fmt(Math.abs(n)).split('.')
-  return i.padStart(w, '0') + (d !== undefined ? '.' + d : '')
-}
-
-/** Nivel = 1 + un nivel cada 3 logros. Los power-ups se ganan por nivel. */
-export function levelInfo(state: State) {
-  const all = withHistory(state)
-  const got = all.filter((a) => a.unlocked).length
-  const level = 1 + Math.floor(got / 3)
-  const goal = all.some((a) => a.unlocked && (a.id.startsWith('meta8') || a.id === 'imc25'))
-  const power: PowerUps = { headband: level >= 2, wrist: level >= 3, shoes: level >= 5, cape: level >= 7, crown: goal }
-  const names = [power.crown && 'CORONA', power.cape && 'CAPA', power.shoes && 'TENIS DORADOS', power.wrist && 'MUÑEQUERAS', power.headband && 'BANDA'].filter(Boolean) as string[]
-  const nextAt = [2, 3, 5, 7].find((l) => l > level)
-  return { level, got, power, names, toNext: nextAt ? (nextAt - 1) * 3 - got : 0 }
-}
-
-function useCountUp(target: number, ms = 900) {
-  const [v, setV] = useState(0)
-  useEffect(() => {
-    let raf = 0
-    const t0 = performance.now()
-    const tick = (t: number) => {
-      const k = Math.min(1, (t - t0) / ms)
-      setV(Math.round(target * (1 - Math.pow(1 - k, 3)) * 10) / 10)
-      if (k < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [target, ms])
-  return v
-}
 
 function Delta({ v, unit, goodWhen }: { v?: number; unit: string; goodWhen: 'down' | 'up' }) {
-  if (v === undefined || Math.abs(v) < 0.05) return <span className="text-lg text-mute">—</span>
+  if (v === undefined || Math.abs(v) < 0.05) return <span className="text-xs text-mute">—</span>
   const good = goodWhen === 'down' ? v < 0 : v > 0
-  return <span className={`text-lg ${good ? 'text-leaf' : 'text-pink'}`}>{v > 0 ? '▲' : '▼'} {fmt(Math.abs(v))} {unit}</span>
-}
-
-function Bar({ value, color }: { value: number; color: string }) {
-  const n = 12
-  const on = Math.round(Math.max(0, Math.min(1, value)) * n)
   return (
-    <div className="flex gap-[3px]">
-      {Array.from({ length: n }).map((_, i) => (
-        <div key={i} className="h-3 flex-1" style={{ background: i < on ? color : '#1c1c44', boxShadow: i < on ? `0 0 6px ${color}` : undefined }} />
-      ))}
-    </div>
+    <span className={`text-xs font-semibold ${good ? 'text-leaf' : 'text-coral'}`}>
+      {v > 0 ? '▲' : '▼'} {fmt(Math.abs(v))} {unit}
+    </span>
   )
 }
-
-const H2 = ({ children }: { children: React.ReactNode }) => <h2 className="font-display text-[12px] text-sky glow-c">{children}</h2>
 
 export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros, onDeleteEvent }: {
   state: State; sum: Summary; onAdd: () => void; onAddInBody: () => void; onAddEvent: () => void; onOpenLogros: () => void; onDeleteEvent: (id: string) => void
 }) {
   const all = withHistory(state)
   const next = nextWeightMilestone(state)
-  const items = all.filter((a) => a.kind === 'equivalencia')
+  const lastEq = all.filter((a) => a.kind === 'equivalencia' && a.unlocked).pop()
   const recent = all
     .filter((a) => a.unlocked && state.unlocked[a.id])
     .sort((a, b) => state.unlocked[b.id].localeCompare(state.unlocked[a.id]))
@@ -77,198 +33,126 @@ export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros,
   const { p, firstIB, lastIB } = sum
   const ibDelta = (k: 'fatPct' | 'fatKg' | 'muscleKg' | 'visceral') =>
     sum.ib.length > 1 && firstIB?.[k] != null && lastIB?.[k] != null ? (lastIB[k] as number) - (firstIB[k] as number) : undefined
-  const lv = levelInfo(state)
-  const [sound, setSnd] = useState(soundOn())
-
-  // Replay: ver tu personaje en cualquier registro
-  const last = sum.ws.length - 1
-  const [idx, setIdx] = useState<number | null>(null) // null = siempre el más reciente
-  const i = idx === null ? last : Math.min(idx, last)
-  const pt = sum.ws[i]
-  const kgAt = pt.trend
-  const lostAt = Math.max(0, sum.startKg - kgAt)
-  const isToday = i === last
-  const bfAt = isToday && lastIB?.fatPct && lastIB.date >= pt.date ? lastIB.fatPct : estBodyFat(kgAt, state)
-  const bfStart = estBodyFat(sum.startKg, state)
-  const score = useCountUp(lostAt)
-  const hi = Math.min(...sum.ws.map((w) => w.kg))
-  const cat = bmiCategory(sum.curBmi)
+  const hour = new Date().getHours()
+  const greet = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
 
   return (
     <div className="space-y-4">
-      {/* HUD */}
-      <header className="flex items-start justify-between px-1 font-display text-[10px] leading-relaxed">
+      <header className="flex items-end justify-between px-1">
         <div>
-          <div className="text-pink glow-p">1UP</div>
-          <div className="uppercase">{p.name}</div>
+          <div className="text-sm text-mute">{greet}</div>
+          <h1 className="font-display text-3xl font-extrabold">{p.name} 👋</h1>
         </div>
-        <div className="text-center">
-          <div className="text-pink glow-p">HI-SCORE</div>
-          <div>{fmt(hi)} KG</div>
-        </div>
-        <button
-          onClick={() => { const n = !sound; setSound(n); setSnd(n); if (n) blip() }}
-          className="rounded border-2 border-wall px-2 py-1.5 text-[10px]"
-          aria-label={sound ? 'Apagar sonido' : 'Prender sonido'}
-        >
-          {sound ? '♪ ON' : '♪ OFF'}
-        </button>
+        {sum.daysSinceLast > 0 && <div className="text-right text-xs text-mute">último registro<br />hace {sum.daysSinceLast} {sum.daysSinceLast === 1 ? 'día' : 'días'}</div>}
       </header>
 
-      {/* Pantalla principal */}
-      <section className="stage relative overflow-hidden rounded-[10px] px-4 pb-4 pt-4">
+      {/* Héroe: avatar */}
+      <section className="card relative overflow-hidden px-5 pb-5 pt-4">
         <div className="flex items-start justify-between">
           <div>
-            <div className="font-display text-[10px] text-mute">SCORE · KG FUERA</div>
-            <div className="mt-2 font-display text-[34px] leading-none text-coral glow-y">{pad(score)}</div>
-          </div>
-          <div className="text-right font-display text-[10px] leading-loose">
-            <div className="text-mute">NIVEL</div>
-            <div className="text-xl text-leaf" style={{ textShadow: '0 0 10px rgba(57,255,122,.7)' }}>{String(lv.level).padStart(2, '0')}</div>
-          </div>
-        </div>
-        <div className="mt-2 flex justify-between gap-3 whitespace-nowrap text-xl">
-          <span className="text-mute">{fmt(sum.startKg)} → <span className="text-ink">{fmt(kgAt)} kg</span></span>
-          <span className="text-mute">grasa{isToday && lastIB?.fatPct ? '' : ' est.'} <span className="text-ink">{fmt(bfAt)}%</span></span>
-        </div>
-
-        <div className="relative mt-2 flex justify-center">
-          <Sprite fat={fatness(bfAt, p.sex)} ghostFat={i > 0 ? fatness(bfStart, p.sex) : undefined} sex={p.sex} power={lv.power} px={6} />
-          {/* piso tipo laberinto */}
-          <div className="absolute inset-x-6 bottom-0 h-[3px] bg-wall shadow-[0_0_10px_#2a2aff]" />
-        </div>
-        <p className="mt-2 text-center text-lg leading-tight text-mute">
-          {i > 0 ? <>El contorno azul es <span className="text-sky">tu fantasma del día uno</span></> : <>Cada kilo que bajes cambia tu personaje</>}
-        </p>
-        {lv.names.length > 0 && (
-          <p className="mt-1 text-center text-lg text-coral">⚡ {lv.names.join(' · ')}</p>
-        )}
-
-        {last > 0 && (
-          <div className="mt-3 rounded-md border-2 border-line px-3 pb-1 pt-2">
-            <div className="flex items-center justify-between font-display text-[9px]">
-              <span className="text-sky">◀ REPLAY ▶</span>
-              <span>{isToday ? 'HOY' : i === 0 ? 'DÍA 1' : dateLabel(pt.date).toUpperCase()}</span>
+            <div className="text-xs font-semibold uppercase tracking-wider text-mute">Llevas</div>
+            <div className="font-display text-6xl font-extrabold leading-none tracking-tight">
+              {sum.lost >= 0 ? '−' : '+'}{fmt(Math.abs(sum.lost))}<span className="text-2xl"> kg</span>
             </div>
-            <input
-              type="range"
-              className="time"
-              min={0}
-              max={last}
-              value={i}
-              onChange={(e) => { const v = Number(e.target.value); setIdx(v === last ? null : v) }}
-              style={{ ['--p' as string]: `${(i / last) * 100}%` }}
-              aria-label="Ver tu personaje en otra fecha"
-            />
+            <div className="mt-1 text-sm text-mute">{fmt(sum.startKg)} → <b className="text-ink">{fmt(sum.current)}</b> kg</div>
           </div>
-        )}
-
-        <button onClick={onAdd} className="btn-primary mt-4 w-full">▶ Anotar peso</button>
-        {sum.daysSinceLast >= 7 && <div className="blink mt-3 text-center font-display text-[10px] text-pink">INSERT COIN · {sum.daysSinceLast} DÍAS SIN JUGAR</div>}
+          <div className="flex flex-col items-end gap-1.5">
+            <span className="rounded-full bg-sun/40 px-3 py-1 text-xs font-bold">{fmt(Math.max(0, sum.lostPct))}% menos</span>
+            {sum.rate !== undefined && <span className="rounded-full bg-line/70 px-3 py-1 text-xs font-semibold">{sum.rate <= 0 ? '▼' : '▲'} {fmt(Math.abs(sum.rate), 2)} kg/sem</span>}
+          </div>
+        </div>
+        <div className="-mb-2 mt-1 flex justify-center">
+          <Avatar shape={sum.shape} lostKg={Math.max(0, sum.lost)} size={190} />
+        </div>
+        <div className="text-center text-xs text-mute">
+          {sum.shape > 0.03 ? <>La línea punteada eres tú el día uno · {Math.round(sum.shape * 100)}% del camino</> : <>Tu avatar cambia conforme avanzas</>}
+        </div>
+        <button onClick={onAdd} className="btn-primary mt-4 w-full text-lg">+ Anotar peso</button>
       </section>
 
-      {/* Números */}
-      <section className="grid grid-cols-3 gap-2">
-        {[
-          { l: 'IMC', v: fmt(sum.curBmi), s: cat.label, c: cat.color },
-          { l: 'MENOS', v: `${fmt(Math.max(0, sum.lostPct))}%`, s: 'de tu peso', c: undefined },
-          { l: 'RITMO', v: sum.rate !== undefined ? fmt(Math.abs(sum.rate), 2) : '—', s: sum.rate !== undefined ? (sum.rate <= 0 ? 'kg/sem ▼' : 'kg/sem ▲') : 'anota más', c: undefined },
-        ].map((x) => (
-          <div key={x.l} className="card p-3 text-center">
-            <div className="font-display text-[9px] text-sky">{x.l}</div>
-            <div className="mt-2 font-display text-[15px]">{x.v}</div>
-            <div className="mt-1 text-lg leading-none" style={{ color: x.c ?? 'var(--color-mute)' }}>{x.s}</div>
-          </div>
-        ))}
-      </section>
-
-      {/* Próximo logro */}
+      {/* Siguiente hito */}
       {next && (
         <button onClick={onOpenLogros} className="card flex w-full items-center gap-4 p-4 text-left">
-          <PixelEmoji e={next.emoji} size={48} />
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-cream text-3xl">{next.emoji}</div>
           <div className="min-w-0 flex-1">
-            <div className="font-display text-[9px] text-pink glow-p">PRÓXIMO LOGRO</div>
-            <div className="mt-1.5 text-2xl leading-none">{next.title}</div>
-            <div className="mb-2 text-lg text-mute">{next.remaining}{(next.remainingKg ?? 9) < 1 ? ' · ¡ya casi!' : ''}</div>
-            <Bar value={next.progress ?? 0} color="#ffe600" />
+            <div className="text-xs font-semibold uppercase tracking-wider text-coral">Siguiente logro</div>
+            <div className="truncate font-display text-lg font-bold">{next.title}</div>
+            <div className="mb-2 text-sm text-mute">{next.remaining}{(next.remainingKg ?? 9) < 1 ? ' 👀 ¡ya casi!' : ''}</div>
+            <Progress value={next.progress ?? 0} />
           </div>
         </button>
       )}
 
-      {/* Inventario */}
-      <section className="card p-4">
-        <div className="mb-3">
-          <H2>INVENTARIO</H2>
-          <div className="mt-1 text-lg text-mute">Todo lo que ya no cargas</div>
-        </div>
-        <div className="grid grid-cols-4 gap-2">
-          {items.map((a) => (
-            <div key={a.id} className={`flex flex-col items-center rounded-md border-2 p-1.5 ${a.unlocked ? 'border-coral/70 bg-coral/5' : 'border-line'}`}>
-              {a.unlocked ? <PixelEmoji e={a.emoji} size={36} /> : <div className="grid h-9 w-9 place-items-center font-display text-sm text-mute">?</div>}
-              <div className="mt-1 font-display text-[8px] text-mute">{a.title.split(' kg')[0]} KG</div>
-            </div>
-          ))}
-        </div>
-        {(() => {
-          const lastEq = items.filter((a) => a.unlocked).pop()
-          return lastEq ? <p className="mt-3 text-xl leading-tight">Ya no cargas <span className="text-coral">{lastEq.title.split(': ')[1]}</span>.</p> : null
-        })()}
-      </section>
+      {/* Equivalencia */}
+      {lastEq && (
+        <section className="card flex items-center gap-4 bg-sun/25! p-4">
+          <div className="text-5xl">{lastEq.emoji}</div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-mute">Ya no cargas</div>
+            <div className="font-display text-xl font-bold leading-tight">{lastEq.title.split(': ')[1]}</div>
+          </div>
+        </section>
+      )}
 
-      {/* Stats RPG */}
-      <section className="card p-4">
+      {/* Cuerpo */}
+      <section className="card p-5">
         <div className="mb-3 flex items-center justify-between">
-          <H2>STATS</H2>
-          <button onClick={onAddInBody} className="rounded border-2 border-sky px-2 py-1 font-display text-[9px] text-sky">+ INBODY</button>
+          <h2 className="font-display text-xl font-bold">Tu cuerpo</h2>
+          <button onClick={onAddInBody} className="rounded-full bg-sky/15 px-3 py-1.5 text-sm font-semibold text-sky">+ InBody</button>
         </div>
         {lastIB ? (
-          <div className="space-y-3">
-            {[
-              { l: 'GRASA', v: lastIB.fatPct, u: '%', bar: 1 - (lastIB.fatPct ?? 0) / 50, c: '#ff3fa4', d: ibDelta('fatPct'), g: 'down' as const, du: 'pts' },
-              { l: 'FUERZA', v: lastIB.muscleKg, u: 'kg músc.', bar: ((lastIB.muscleKg ?? 0) - 20) / 30, c: '#39ff7a', d: ibDelta('muscleKg'), g: 'up' as const, du: 'kg' },
-              { l: 'DEFENSA', v: lastIB.visceral, u: 'visceral', bar: 1 - (lastIB.visceral ?? 0) / 20, c: '#00e5ff', d: ibDelta('visceral'), g: 'down' as const, du: '' },
-            ].filter((x) => x.v != null).map((x) => (
-              <div key={x.l}>
-                <div className="mb-1 flex items-baseline justify-between">
-                  <span className="font-display text-[10px]" style={{ color: x.c }}>{x.l}</span>
-                  <span className="whitespace-nowrap text-lg"><span className="text-ink">{fmt(x.v!, x.l === 'DEFENSA' ? 0 : 1)}</span> <span className="text-mute">{x.u}</span> · <Delta v={x.d} unit={x.du} goodWhen={x.g} /></span>
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { l: '% grasa', v: lastIB.fatPct, u: '%', d: ibDelta('fatPct'), g: 'down' as const, du: 'pts' },
+                { l: 'Masa grasa', v: lastIB.fatKg, u: 'kg', d: ibDelta('fatKg'), g: 'down' as const, du: 'kg' },
+                { l: 'Músculo', v: lastIB.muscleKg, u: 'kg', d: ibDelta('muscleKg'), g: 'up' as const, du: 'kg' },
+                { l: 'Visceral', v: lastIB.visceral, u: 'nivel', d: ibDelta('visceral'), g: 'down' as const, du: '' },
+              ].filter((x) => x.v != null).map((x) => (
+                <div key={x.l} className="rounded-2xl bg-cream p-3">
+                  <div className="text-xs text-mute">{x.l}</div>
+                  <div className="font-display text-2xl font-bold">{fmt(x.v!, x.u === 'nivel' ? 0 : 1)}<span className="text-sm font-medium text-mute"> {x.u}</span></div>
+                  <Delta v={x.d} unit={x.du} goodWhen={x.g} />
                 </div>
-                <Bar value={x.bar} color={x.c} />
-              </div>
-            ))}
-            {lastIB.fatKg != null && firstIB?.fatKg != null && sum.ib.length > 1 && (
-              <p className="text-xl leading-tight">Grasa total: <span className="text-coral">{fmt(lastIB.fatKg)} kg</span> <Delta v={ibDelta('fatKg')} unit="kg" goodWhen="down" /></p>
-            )}
-            <p className="text-lg leading-tight text-mute">
-              Último: {dateLabel(lastIB.date)}{sum.ib.length > 1 ? ` · vs. el primero (${dateLabel(firstIB!.date)})` : ' · sube otro para comparar'}
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-mute">
+              Último InBody: {dateLabel(lastIB.date)}{sum.ib.length > 1 ? ` · comparado con el primero (${dateLabel(firstIB!.date)})` : ' · sube otro para comparar'}
             </p>
-          </div>
+          </>
         ) : (
-          <p className="text-xl leading-tight text-mute">Sube un InBody para desbloquear tus stats: grasa, fuerza (músculo) y defensa (grasa visceral). Tu personaje se vuelve más exacto.</p>
+          <p className="text-sm text-mute">Cuando tengas un InBody, súbelo aquí. Celebramos la grasa que pierdes y el músculo que ganas, no solo el peso.</p>
         )}
       </section>
 
-      {/* Misiones */}
-      <section className="card p-4">
+      {/* IMC */}
+      <section className="card p-5">
+        <h2 className="mb-2 font-display text-xl font-bold">IMC</h2>
+        <BmiGauge value={sum.curBmi} start={sum.startBmi} />
+        <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
+      </section>
+
+      {/* Eventos */}
+      <section className="card p-5">
         <div className="mb-3 flex items-center justify-between">
-          <H2>MISIONES</H2>
-          <button onClick={onAddEvent} className="rounded border-2 border-line px-2 py-1 font-display text-[9px]">+ NUEVA</button>
+          <h2 className="font-display text-xl font-bold">Lo que viene</h2>
+          <button onClick={onAddEvent} className="rounded-full bg-line/70 px-3 py-1.5 text-sm font-semibold">+ Evento</button>
         </div>
-        {state.events.filter((e) => e.date >= todayISO()).length === 0 && <p className="text-xl leading-tight text-mute">Agrega un viaje o una fecha importante y te digo cómo llegarías a tu ritmo actual.</p>}
+        {state.events.filter((e) => e.date >= todayISO()).length === 0 && <p className="text-sm text-mute">Agrega un viaje o una fecha importante y te digo cómo llegarías a ese ritmo.</p>}
         <div className="space-y-2">
           {sortByDate(state.events).filter((e) => e.date >= todayISO()).map((e) => {
             const pr = predictFor(sum, e.date)
             const days = daysBetween(todayISO(), e.date)
             return (
-              <div key={e.id} className="flex items-center gap-3 rounded-md border-2 border-line p-3">
+              <div key={e.id} className="flex items-center gap-3 rounded-2xl bg-cream p-3">
                 <div className="flex-1">
-                  <div className="text-2xl leading-none">{e.name}</div>
-                  <div className="text-lg text-mute">{dateLabel(e.date)} · en {days} días</div>
+                  <div className="font-semibold">{e.name}</div>
+                  <div className="text-xs text-mute">{dateLabel(e.date)} · en {days} días</div>
                 </div>
                 <div className="text-right">
-                  {pr ? <><div className="font-display text-[13px] text-coral">~{fmt(pr.kg)}</div><div className="text-lg text-leaf">{pr.kg < sum.current ? `−${fmt(sum.current - pr.kg)} kg más` : 'a este ritmo'}</div></> : <div className="text-lg leading-tight text-mute">anota más<br />para predecir</div>}
+                  {pr ? <><div className="font-display text-xl font-bold">~{fmt(pr.kg)} kg</div><div className="text-[11px] text-leaf">{pr.kg < sum.current ? `−${fmt(sum.current - pr.kg)} kg más` : 'a este ritmo'}</div></> : <div className="text-xs text-mute">anota más<br />para predecir</div>}
                 </div>
-                <button onClick={() => onDeleteEvent(e.id)} className="text-2xl text-mute" aria-label="Borrar misión">×</button>
+                <button onClick={() => onDeleteEvent(e.id)} className="text-mute" aria-label="Borrar evento">×</button>
               </div>
             )
           })}
@@ -279,14 +163,14 @@ export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros,
       {recent.length > 0 && (
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
-            <H2>LOGROS RECIENTES</H2>
-            <button onClick={onOpenLogros} className="font-display text-[9px] text-coral">VER TODOS ▶</button>
+            <h2 className="font-display text-xl font-bold">Logros recientes</h2>
+            <button onClick={onOpenLogros} className="text-sm font-semibold text-coral">Ver todos</button>
           </div>
           <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
             {recent.map((a) => (
               <div key={a.id} className="card w-36 shrink-0 p-3">
-                <PixelEmoji e={a.emoji} size={36} />
-                <div className="mt-1 text-lg leading-none">{a.title}</div>
+                <div className="text-3xl">{a.emoji}</div>
+                <div className="mt-1 text-sm font-semibold leading-tight">{a.title}</div>
               </div>
             ))}
           </div>
@@ -301,31 +185,30 @@ export function Logros({ state }: { state: State }) {
   const [open, setOpen] = useState<Achievement | null>(null)
   const kinds = ['salud', 'cuerpo', 'meta', 'equivalencia', 'constancia']
   const got = all.filter((a) => a.unlocked).length
-  const lv = levelInfo(state)
   return (
     <div className="space-y-5">
       <header className="px-1">
-        <h1 className="font-display text-lg text-coral glow-y">LOGROS</h1>
-        <p className="mt-2 text-xl text-mute">{got} de {all.length} desbloqueados · nivel {lv.level}{lv.toNext > 0 ? ` · ${lv.toNext} para el próximo power-up` : ''}</p>
-        <div className="mt-3"><Bar value={all.length ? got / all.length : 0} color="#39ff7a" /></div>
+        <h1 className="font-display text-3xl font-extrabold">Logros</h1>
+        <p className="text-sm text-mute">{got} de {all.length} desbloqueados</p>
+        <div className="mt-3"><Progress value={all.length ? got / all.length : 0} color="#2FB37A" /></div>
       </header>
       {kinds.map((k) => {
         const list = all.filter((a) => a.kind === k)
         if (!list.length) return null
         return (
           <section key={k}>
-            <div className="mb-2 px-1"><H2>{KIND_LABEL[k].toUpperCase()}</H2></div>
+            <h2 className="mb-2 px-1 font-display text-lg font-bold">{KIND_LABEL[k]}</h2>
             <div className="grid grid-cols-2 gap-3">
               {list.map((a) => (
-                <button key={a.id} onClick={() => setOpen(a)} className={`card p-3 text-left ${a.unlocked ? '' : 'opacity-70'}`}>
-                  {a.unlocked ? <PixelEmoji e={a.emoji} size={36} /> : <PixelEmoji e="🔒" size={36} dim />}
-                  <div className="mt-1.5 text-xl leading-none">{a.title}</div>
+                <button key={a.id} onClick={() => setOpen(a)} className={`card p-3.5 text-left ${a.unlocked ? '' : 'opacity-60'}`}>
+                  <div className={`text-3xl ${a.unlocked ? '' : 'grayscale'}`}>{a.unlocked ? a.emoji : '🔒'}</div>
+                  <div className="mt-1.5 text-sm font-semibold leading-tight">{a.title}</div>
                   {a.unlocked ? (
-                    <div className="mt-1 text-lg text-leaf">✓ {state.unlocked[a.id] ? new Date(state.unlocked[a.id] + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : 'logrado'}</div>
+                    <div className="mt-1 text-[11px] text-leaf">✓ {state.unlocked[a.id] ? new Date(state.unlocked[a.id] + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : 'logrado'}</div>
                   ) : (
                     <div className="mt-2 space-y-1">
-                      {a.progress !== undefined && <Progress value={a.progress} color="#8a8ac4" />}
-                      <div className="text-lg leading-none text-mute">{a.remaining}</div>
+                      {a.progress !== undefined && <Progress value={a.progress} color="#8A7D72" />}
+                      <div className="text-[11px] text-mute">{a.remaining}</div>
                     </div>
                   )}
                 </button>
@@ -335,11 +218,11 @@ export function Logros({ state }: { state: State }) {
         )
       })}
       {open && (
-        <div className="fade-in fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-6" onClick={() => setOpen(null)}>
-          <div className="pop-in card w-full max-w-sm p-6 text-center">
-            {open.unlocked ? <PixelEmoji e={open.emoji} size={80} /> : <PixelEmoji e="🔒" size={80} dim />}
-            <h3 className="mt-4 font-display text-[13px] leading-relaxed">{open.title}</h3>
-            <p className="mt-3 text-xl leading-tight text-ink/80">{open.unlocked ? open.body : `Todavía no: ${open.remaining ?? 'sigue así'}.`}</p>
+        <div className="fade-in fixed inset-0 z-40 flex items-center justify-center bg-ink/50 px-6" onClick={() => setOpen(null)}>
+          <div className="pop-in w-full max-w-sm rounded-[28px] bg-paper p-6 text-center">
+            <div className="text-6xl">{open.unlocked ? open.emoji : '🔒'}</div>
+            <h3 className="mt-3 font-display text-2xl font-extrabold">{open.title}</h3>
+            <p className="mt-2 text-sm text-ink/75">{open.unlocked ? open.body : `Todavía no: ${open.remaining ?? 'sigue así'}.`}</p>
           </div>
         </div>
       )}
@@ -357,38 +240,33 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody }: { sta
   return (
     <div className="space-y-4">
       <header className="px-1">
-        <h1 className="font-display text-lg text-coral glow-y">HISTORIAL</h1>
-        <p className="mt-2 text-xl leading-tight text-mute">Puntos: lo que marcó la báscula · Línea: tu tendencia real</p>
+        <h1 className="font-display text-3xl font-extrabold">Historial</h1>
+        <p className="text-sm text-mute">Puntos: lo que marcó la báscula · Línea: tu tendencia real</p>
       </header>
       <section className="card p-4">
         <Chart data={sum.ws} goal={sum.p.goalKg} inbodyDates={state.inbodies.map((i) => i.date)} />
       </section>
-      <section className="card p-4">
-        <H2>IMC</H2>
-        <BmiGauge value={sum.curBmi} start={sum.startBmi} />
-        <p className="mt-1 text-center text-lg text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
-      </section>
-      <section className="card divide-y-2 divide-line overflow-hidden">
+      <section className="card divide-y divide-line overflow-hidden">
         {rows.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
-            <div className="w-14 shrink-0 text-lg leading-tight text-mute">{new Date(r.date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}<br />{r.date.slice(0, 4)}</div>
+          <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+            <div className="w-14 shrink-0 text-xs text-mute">{new Date(r.date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}<br />{r.date.slice(0, 4)}</div>
             {r.t === 'w' ? (
               <div className="flex-1">
-                <div><span className="font-display text-[13px]">{fmt(r.w.kg)}</span> <span className="text-lg text-mute">kg · tend. {fmt(trendByDate[r.date] ?? r.w.kg)}</span></div>
-                {r.w.note && <div className="text-lg leading-tight text-ink/70">✎ {r.w.note}</div>}
+                <div className="font-display text-lg font-bold">{fmt(r.w.kg)} kg <span className="text-xs font-normal text-mute">tendencia {fmt(trendByDate[r.date] ?? r.w.kg)}</span></div>
+                {r.w.note && <div className="text-sm text-ink/70">📝 {r.w.note}</div>}
               </div>
             ) : (
               <div className="flex-1">
-                <div className="font-display text-[11px] text-sky">INBODY</div>
-                <div className="text-lg leading-tight text-ink/70">
+                <div className="font-semibold text-sky">🔬 InBody</div>
+                <div className="text-xs text-ink/70">
                   {[r.i.kg && `${fmt(r.i.kg)} kg`, r.i.fatPct && `${fmt(r.i.fatPct)}% grasa`, r.i.muscleKg && `${fmt(r.i.muscleKg)} kg músculo`, r.i.visceral && `visceral ${r.i.visceral}`].filter(Boolean).join(' · ')}
                 </div>
               </div>
             )}
             {armed === r.id ? (
-              <button onClick={() => { (r.t === 'w' ? onDeleteWeighIn : onDeleteInBody)(r.id); setArmed(null) }} className="rounded bg-pink px-2 py-1 font-display text-[9px] text-white">BORRAR</button>
+              <button onClick={() => { (r.t === 'w' ? onDeleteWeighIn : onDeleteInBody)(r.id); setArmed(null) }} className="rounded-full bg-coral px-3 py-1 text-xs font-bold text-white">Borrar</button>
             ) : (
-              <button onClick={() => setArmed(r.id)} className="px-2 text-2xl text-mute" aria-label="Opciones">×</button>
+              <button onClick={() => setArmed(r.id)} className="px-2 text-lg text-mute" aria-label="Opciones">×</button>
             )}
           </div>
         ))}

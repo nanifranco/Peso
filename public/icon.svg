@@ -1,16 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
-  <rect width="32" height="32" fill="#05050A"/>
-  <rect x="1" y="1" width="30" height="30" fill="none" stroke="#2A2AFF" stroke-width="1"/>
-  <g transform="translate(9 4)">
-    <rect x="3" y="0" width="8" height="2" fill="#3A2416"/>
-    <rect x="2" y="2" width="10" height="7" fill="#FFC89A"/>
-    <rect x="2" y="3" width="10" height="1" fill="#FF3B3B"/>
-    <rect x="4" y="5" width="1" height="2" fill="#0B0B1A"/><rect x="9" y="5" width="1" height="2" fill="#0B0B1A"/>
-    <rect x="5" y="8" width="4" height="1" fill="#0B0B1A"/>
-    <rect x="1" y="10" width="12" height="7" fill="#00E5FF"/>
-    <rect x="-1" y="10" width="2" height="6" fill="#FFC89A"/><rect x="13" y="10" width="2" height="6" fill="#FFC89A"/>
-    <rect x="2" y="17" width="10" height="3" fill="#FF3FA4"/>
-    <rect x="3" y="20" width="3" height="3" fill="#FFC89A"/><rect x="8" y="20" width="3" height="3" fill="#FFC89A"/>
-    <rect x="2" y="23" width="4" height="1" fill="#FFE600"/><rect x="8" y="23" width="4" height="1" fill="#FFE600"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#FF6B4A"/>
+  <circle cx="256" cy="150" r="54" fill="#FBF5EC"/>
+  <path d="M176 230 Q256 208 336 230 Q350 320 312 410 L200 410 Q162 320 176 230Z" fill="#FBF5EC"/>
+  <circle cx="380" cy="300" r="22" fill="#FFD166"/>
+  <circle cx="410" cy="240" r="14" fill="#FFD166" opacity=".8"/>
+  <circle cx="400" cy="190" r="8" fill="#FFD166" opacity=".6"/>
 </svg>

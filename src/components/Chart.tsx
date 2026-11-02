@@ -26,36 +26,36 @@ export default function Chart({ data, goal, inbodyDates = [] }: { data: P[]; goa
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
       <defs>
         <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#FFE600" stopOpacity=".22" />
-          <stop offset="1" stopColor="#FFE600" stopOpacity="0" />
+          <stop offset="0" stopColor="#FF6B4A" stopOpacity=".22" />
+          <stop offset="1" stopColor="#FF6B4A" stopOpacity="0" />
         </linearGradient>
       </defs>
       {Array.from({ length: ticks + 1 }).map((_, i) => {
         const v = lo + ((hi - lo) * i) / ticks
         return (
           <g key={i}>
-            <line x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} stroke="#1C1C44" />
-            <text x={pl - 5} y={y(v) + 3} fontSize="13" textAnchor="end" fill="#8A8AC4">{Math.round(v)}</text>
+            <line x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} stroke="#EEE3D3" />
+            <text x={pl - 5} y={y(v) + 3} fontSize="9" textAnchor="end" fill="#8A7D72">{Math.round(v)}</text>
           </g>
         )
       })}
       {months.map((m) => (
-        <text key={m.x} x={m.x} y={H - 6} fontSize="13" textAnchor="middle" fill="#8A8AC4">{m.l}</text>
+        <text key={m.x} x={m.x} y={H - 6} fontSize="9" textAnchor="middle" fill="#8A7D72">{m.l}</text>
       ))}
       {goal && goal >= lo && goal <= hi && (
         <g>
-          <line x1={pl} x2={W - pr} y1={y(goal)} y2={y(goal)} stroke="#39FF7A" strokeDasharray="4 4" strokeWidth="1.5" />
-          <text x={W - pr} y={y(goal) - 4} fontSize="13" textAnchor="end" fill="#39FF7A" fontWeight="600">meta {fmt(goal)}</text>
+          <line x1={pl} x2={W - pr} y1={y(goal)} y2={y(goal)} stroke="#2FB37A" strokeDasharray="4 4" strokeWidth="1.5" />
+          <text x={W - pr} y={y(goal) - 4} fontSize="9" textAnchor="end" fill="#2FB37A" fontWeight="600">meta {fmt(goal)}</text>
         </g>
       )}
       {inbodyDates.map((d) => d >= d0 && (
-        <line key={d} x1={x(d)} x2={x(d)} y1={pt} y2={H - pb} stroke="#00E5FF" strokeOpacity=".4" strokeDasharray="2 3" />
+        <line key={d} x1={x(d)} x2={x(d)} y1={pt} y2={H - pb} stroke="#5B8DEF" strokeOpacity=".4" strokeDasharray="2 3" />
       ))}
       <path d={area} fill="url(#area)" />
       {data.map((d) => (
-        <circle key={d.date + d.kg} cx={x(d.date)} cy={y(d.kg)} r="2.6" fill="#F3EBE1" opacity=".35" />
+        <circle key={d.date + d.kg} cx={x(d.date)} cy={y(d.kg)} r="2.6" fill="#2A1F1A" opacity=".3" />
       ))}
-      <path d={trend} fill="none" stroke="#FFE600" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={trend} fill="none" stroke="#FF6B4A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
