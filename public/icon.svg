@@ -1,8 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#FF6B4A"/>
-  <circle cx="256" cy="150" r="54" fill="#FBF5EC"/>
-  <path d="M176 230 Q256 208 336 230 Q350 320 312 410 L200 410 Q162 320 176 230Z" fill="#FBF5EC"/>
-  <circle cx="380" cy="300" r="22" fill="#FFD166"/>
-  <circle cx="410" cy="240" r="14" fill="#FFD166" opacity=".8"/>
-  <circle cx="400" cy="190" r="8" fill="#FFD166" opacity=".6"/>
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".35" r=".75"><stop offset="0" stop-color="#3A2219"/><stop offset="1" stop-color="#12100E"/></radialGradient>
+    <linearGradient id="c" x1="0" x2="1"><stop offset="0" stop-color="#8A4127"/><stop offset=".45" stop-color="#EBA07A"/><stop offset="1" stop-color="#7A3A22"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="128" r="44" fill="url(#c)"/>
+  <path d="M256 178c-34 0-62 8-80 20-8 40 4 80 12 112-6 30-10 60-4 92h144c6-32 2-62-4-92 8-32 20-72 12-112-18-12-46-20-80-20z" fill="url(#c)"/>
+  <path d="M332 404c8-26 30-40 52-40s38 16 44 40z" fill="#C86A45"/>
+  <path d="M352 384l6-8 8 3-3 7zM384 376l7-6 6 5-6 6zM400 392l6-7 7 4-5 7z" fill="#7A3A22"/>
+  <rect x="150" y="410" width="290" height="6" rx="3" fill="#FF7A50" opacity=".9"/>
 </svg>

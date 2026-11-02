@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Achievement, State } from './lib/types'
-import { daysBetween, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
+import { bmiCategory, daysBetween, estBodyFat, fatness, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
 import { KIND_LABEL, nextWeightMilestone, withHistory } from './lib/achievements'
 import { todayISO } from './lib/store'
 import Avatar from './components/Avatar'
@@ -36,38 +36,92 @@ export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros,
   const hour = new Date().getHours()
   const greet = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
 
+  // Máquina del tiempo
+  const last = sum.ws.length - 1
+  const [idx, setIdx] = useState<number | null>(null) // null = siempre el registro más reciente
+  const i = idx === null ? last : Math.min(idx, last)
+  const pt = sum.ws[i]
+  const kgAt = pt.trend
+  const lostAt = sum.startKg - kgAt
+  const bfAt = estBodyFat(kgAt, state)
+  const bfStart = estBodyFat(sum.startKg, state)
+  const isToday = i === last
+  const bfNow = lastIB?.fatPct && isToday && lastIB.date >= pt.date ? lastIB.fatPct : bfAt
+  const cat = bmiCategory(sum.curBmi)
+
   return (
     <div className="space-y-4">
       <header className="flex items-end justify-between px-1">
         <div>
           <div className="text-sm text-mute">{greet}</div>
-          <h1 className="font-display text-3xl font-extrabold">{p.name} 👋</h1>
+          <h1 className="font-display text-3xl font-black tracking-tight">{p.name}</h1>
         </div>
         {sum.daysSinceLast > 0 && <div className="text-right text-xs text-mute">último registro<br />hace {sum.daysSinceLast} {sum.daysSinceLast === 1 ? 'día' : 'días'}</div>}
       </header>
 
-      {/* Héroe: avatar */}
-      <section className="card relative overflow-hidden px-5 pb-5 pt-4">
-        <div className="flex items-start justify-between">
+      {/* Escenario: la escultura */}
+      <section className="stage grain relative overflow-hidden rounded-[32px] px-5 pb-5 pt-5">
+        <div className="relative z-10 flex items-start justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-mute">Llevas</div>
-            <div className="font-display text-6xl font-extrabold leading-none tracking-tight">
-              {sum.lost >= 0 ? '−' : '+'}{fmt(Math.abs(sum.lost))}<span className="text-2xl"> kg</span>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-coral">Te estás esculpiendo</div>
+            <div className="mt-1 font-display text-[64px] font-black leading-[0.9] tracking-tight">
+              {Math.abs(lostAt) < 0.05 ? '' : lostAt > 0 ? '−' : '+'}{fmt(Math.abs(lostAt))}<span className="ml-1 text-2xl font-semibold">kg</span>
             </div>
-            <div className="mt-1 text-sm text-mute">{fmt(sum.startKg)} → <b className="text-ink">{fmt(sum.current)}</b> kg</div>
+            <div className="mt-2 text-sm text-mute">{fmt(sum.startKg)} → <b className="text-ink">{fmt(kgAt)}</b> kg</div>
           </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <span className="rounded-full bg-sun/40 px-3 py-1 text-xs font-bold">{fmt(Math.max(0, sum.lostPct))}% menos</span>
-            {sum.rate !== undefined && <span className="rounded-full bg-line/70 px-3 py-1 text-xs font-semibold">{sum.rate <= 0 ? '▼' : '▲'} {fmt(Math.abs(sum.rate), 2)} kg/sem</span>}
+          <div className="mt-1 text-right">
+            <div className="text-[11px] uppercase tracking-wider text-mute">{lastIB?.fatPct && isToday ? 'grasa' : 'grasa est.'}</div>
+            <div className="font-display text-2xl font-bold">{fmt(bfNow)}%</div>
+            <div className="text-[11px] text-leaf">{bfStart - bfNow > 0.2 ? `−${fmt(bfStart - bfNow)} pts` : ''}</div>
           </div>
         </div>
-        <div className="-mb-2 mt-1 flex justify-center">
-          <Avatar shape={sum.shape} lostKg={Math.max(0, sum.lost)} size={190} />
+
+        <div className="relative -mt-6 flex justify-center">
+          <Avatar fat={fatness(bfNow, p.sex)} ghostFat={i > 0 ? fatness(bfStart, p.sex) : undefined} sex={p.sex} lostKg={Math.max(0, lostAt)} width={178} />
         </div>
-        <div className="text-center text-xs text-mute">
-          {sum.shape > 0.03 ? <>La línea punteada eres tú el día uno · {Math.round(sum.shape * 100)}% del camino</> : <>Tu avatar cambia conforme avanzas</>}
-        </div>
+        <p className="-mt-1 text-center text-[11px] leading-snug text-mute">
+          {lostAt > 0.2 ? <>El montón de barro es lo que ya quitaste · la línea punteada eres tú el día uno</> : <>Cada kilo que bajes cae aquí como barro. Empecemos a esculpir.</>}
+        </p>
+
+        {last > 0 && (
+          <div className="mt-4 rounded-2xl bg-black/25 px-4 pb-2 pt-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold uppercase tracking-wider text-mute">⏳ Máquina del tiempo</span>
+              <span className="font-semibold">{isToday ? 'Hoy' : i === 0 ? 'Día uno' : dateLabel(pt.date)}</span>
+            </div>
+            <input
+              type="range"
+              className="time"
+              min={0}
+              max={last}
+              value={i}
+              onChange={(e) => { const v = Number(e.target.value); setIdx(v === last ? null : v) }}
+              style={{ ['--p' as string]: `${(i / last) * 100}%` }}
+              aria-label="Ver tu cuerpo en otra fecha"
+            />
+          </div>
+        )}
+
         <button onClick={onAdd} className="btn-primary mt-4 w-full text-lg">+ Anotar peso</button>
+      </section>
+
+      {/* Números clave */}
+      <section className="grid grid-cols-3 gap-2">
+        <div className="card p-3 text-center">
+          <div className="text-[11px] uppercase tracking-wider text-mute">IMC</div>
+          <div className="font-display text-2xl font-bold">{fmt(sum.curBmi)}</div>
+          <div className="text-[11px] font-semibold" style={{ color: cat.color }}>{cat.label}</div>
+        </div>
+        <div className="card p-3 text-center">
+          <div className="text-[11px] uppercase tracking-wider text-mute">Perdido</div>
+          <div className="font-display text-2xl font-bold">{fmt(Math.max(0, sum.lostPct))}%</div>
+          <div className="text-[11px] text-mute">de tu peso</div>
+        </div>
+        <div className="card p-3 text-center">
+          <div className="text-[11px] uppercase tracking-wider text-mute">Ritmo</div>
+          <div className="font-display text-2xl font-bold">{sum.rate !== undefined ? fmt(Math.abs(sum.rate), 2) : '—'}</div>
+          <div className="text-[11px] text-mute">{sum.rate !== undefined ? (sum.rate <= 0 ? 'kg/sem ▼' : 'kg/sem ▲') : 'anota más'}</div>
+        </div>
       </section>
 
       {/* Siguiente hito */}
@@ -75,9 +129,9 @@ export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros,
         <button onClick={onOpenLogros} className="card flex w-full items-center gap-4 p-4 text-left">
           <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-cream text-3xl">{next.emoji}</div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-semibold uppercase tracking-wider text-coral">Siguiente logro</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-coral">Siguiente logro</div>
             <div className="truncate font-display text-lg font-bold">{next.title}</div>
-            <div className="mb-2 text-sm text-mute">{next.remaining}{(next.remainingKg ?? 9) < 1 ? ' 👀 ¡ya casi!' : ''}</div>
+            <div className="mb-2 text-sm text-mute">{next.remaining}{(next.remainingKg ?? 9) < 1 ? ' · ¡ya casi! 👀' : ''}</div>
             <Progress value={next.progress ?? 0} />
           </div>
         </button>
@@ -85,10 +139,10 @@ export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros,
 
       {/* Equivalencia */}
       {lastEq && (
-        <section className="card flex items-center gap-4 bg-sun/25! p-4">
+        <section className="card flex items-center gap-4 p-4" style={{ background: 'linear-gradient(120deg, rgba(255,196,107,.16), rgba(255,122,80,.06))' }}>
           <div className="text-5xl">{lastEq.emoji}</div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-mute">Ya no cargas</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sun">Ya no cargas</div>
             <div className="font-display text-xl font-bold leading-tight">{lastEq.title.split(': ')[1]}</div>
           </div>
         </section>
@@ -102,7 +156,7 @@ export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros,
         </div>
         {lastIB ? (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {[
                 { l: '% grasa', v: lastIB.fatPct, u: '%', d: ibDelta('fatPct'), g: 'down' as const, du: 'pts' },
                 { l: 'Masa grasa', v: lastIB.fatKg, u: 'kg', d: ibDelta('fatKg'), g: 'down' as const, du: 'kg' },
@@ -117,28 +171,21 @@ export function Home({ state, sum, onAdd, onAddInBody, onAddEvent, onOpenLogros,
               ))}
             </div>
             <p className="mt-3 text-xs text-mute">
-              Último InBody: {dateLabel(lastIB.date)}{sum.ib.length > 1 ? ` · comparado con el primero (${dateLabel(firstIB!.date)})` : ' · sube otro para comparar'}
+              Último: {dateLabel(lastIB.date)}{sum.ib.length > 1 ? ` · vs. el primero (${dateLabel(firstIB!.date)})` : ' · sube otro para comparar'}
             </p>
           </>
         ) : (
-          <p className="text-sm text-mute">Cuando tengas un InBody, súbelo aquí. Celebramos la grasa que pierdes y el músculo que ganas, no solo el peso.</p>
+          <p className="text-sm text-mute">Cuando tengas un InBody, súbelo. Celebramos la grasa que pierdes y el músculo que ganas, y tu escultura se vuelve más exacta.</p>
         )}
-      </section>
-
-      {/* IMC */}
-      <section className="card p-5">
-        <h2 className="mb-2 font-display text-xl font-bold">IMC</h2>
-        <BmiGauge value={sum.curBmi} start={sum.startBmi} />
-        <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
       </section>
 
       {/* Eventos */}
       <section className="card p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-display text-xl font-bold">Lo que viene</h2>
-          <button onClick={onAddEvent} className="rounded-full bg-line/70 px-3 py-1.5 text-sm font-semibold">+ Evento</button>
+          <button onClick={onAddEvent} className="rounded-full bg-line px-3 py-1.5 text-sm font-semibold">+ Evento</button>
         </div>
-        {state.events.filter((e) => e.date >= todayISO()).length === 0 && <p className="text-sm text-mute">Agrega un viaje o una fecha importante y te digo cómo llegarías a ese ritmo.</p>}
+        {state.events.filter((e) => e.date >= todayISO()).length === 0 && <p className="text-sm text-mute">Agrega un viaje o una fecha importante y te digo cómo llegarías a tu ritmo actual.</p>}
         <div className="space-y-2">
           {sortByDate(state.events).filter((e) => e.date >= todayISO()).map((e) => {
             const pr = predictFor(sum, e.date)
@@ -218,7 +265,7 @@ export function Logros({ state }: { state: State }) {
         )
       })}
       {open && (
-        <div className="fade-in fixed inset-0 z-40 flex items-center justify-center bg-ink/50 px-6" onClick={() => setOpen(null)}>
+        <div className="fade-in fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-6" onClick={() => setOpen(null)}>
           <div className="pop-in w-full max-w-sm rounded-[28px] bg-paper p-6 text-center">
             <div className="text-6xl">{open.unlocked ? open.emoji : '🔒'}</div>
             <h3 className="mt-3 font-display text-2xl font-extrabold">{open.title}</h3>
@@ -243,6 +290,11 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody }: { sta
         <h1 className="font-display text-3xl font-extrabold">Historial</h1>
         <p className="text-sm text-mute">Puntos: lo que marcó la báscula · Línea: tu tendencia real</p>
       </header>
+      <section className="card p-5">
+        <h2 className="mb-1 font-display text-lg font-bold">IMC</h2>
+        <BmiGauge value={sum.curBmi} start={sum.startBmi} />
+        <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
+      </section>
       <section className="card p-4">
         <Chart data={sum.ws} goal={sum.p.goalKg} inbodyDates={state.inbodies.map((i) => i.date)} />
       </section>

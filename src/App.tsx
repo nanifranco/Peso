@@ -42,9 +42,10 @@ export default function App() {
     return (
       <div className="safe-top safe-bottom mx-auto flex min-h-dvh max-w-md flex-col px-5">
         <div className="flex flex-col items-center pt-4 text-center">
-          <Avatar shape={0} lostKg={0} size={130} />
-          <h1 className="mt-2 font-display text-4xl font-extrabold">Peso</h1>
-          <p className="mt-2 text-mute">Anota cuando quieras. Yo me encargo de celebrar cada cosa que logres: kilos, grasa, músculo y salud.</p>
+          <Avatar fat={0.5} sex="h" width={120} animate={false} />
+          <h1 className="mt-1 font-display text-5xl font-black tracking-tight">Peso</h1>
+          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-coral">Esculpe tu cuerpo</div>
+          <p className="mt-2 text-mute">Anota cuando quieras. Cada kilo que bajes cae como barro de tu escultura, y yo celebro cada logro: kilos, grasa, músculo y salud.</p>
         </div>
         <div className="card mt-6 p-5">
           <ProfileForm
