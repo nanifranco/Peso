@@ -31,5 +31,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Si Pages sigue en "Deploy from a branch", GitHub también publica los archivos sin compilar
+      # y la página sale en blanco. Esperamos a que termine para que esta versión quede encima.
+      # (Se puede quitar cuando Settings → Pages → Source esté en "GitHub Actions".)
+      - name: Esperar a la publicación automática de GitHub
+        run: sleep 75
       - id: deployment
         uses: actions/deploy-pages@v4
