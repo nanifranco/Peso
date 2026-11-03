@@ -378,40 +378,43 @@ export function MetricChart({ points, color, unit, ideal, idealLabel = 'ideal', 
 export function IdealBar({ label, unit, start, now, ideal, better, decimals = 1, note }: {
   label: string; unit: string; start: number; now: number; ideal: number; better: 'down' | 'up'; decimals?: number; note?: string
 }) {
-  const lo = Math.min(start, now, ideal), hi = Math.max(start, now, ideal)
-  const pad = (hi - lo) * 0.12 || 1
-  const a = lo - pad, b = hi + pad
-  const pos = (v: number) => `${((v - a) / (b - a)) * 100}%`
+  // Siempre de izquierda (inicio) a derecha (ideal), sin importar si el ideal es bajar o subir
   const total = Math.abs(start - ideal)
   const done = better === 'down' ? start - now : now - start
-  const pct = total > 0 ? Math.max(0, Math.min(1, done / total)) : now === ideal ? 1 : 0
   const reached = better === 'down' ? now <= ideal : now >= ideal
+  const pct = reached ? 1 : total > 0 ? Math.max(0, Math.min(1, done / total)) : 0
   const left = Math.abs(now - ideal)
+  const color = better === 'down' ? CORAL : BLUE
+  const unitLeft = unit === '%' ? 'puntos' : unit
   return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between">
-        <span className="font-semibold">{label}</span>
-        <span className="text-sm">
-          {reached ? <b className="text-leaf">¡Llegaste! 🎉</b> : <><b>{fmt(left, decimals)} {unit}</b> <span className="text-mute">para tu ideal</span></>}
-        </span>
+    <div className="rounded-2xl bg-cream p-3.5">
+      <div className="mb-2 text-sm font-semibold">{label}</div>
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-mute">Hoy</div>
+          <div className="font-display text-3xl font-extrabold leading-none" style={{ color }}>{fmt(now, decimals)}<span className="text-base font-semibold text-mute"> {unit}</span></div>
+        </div>
+        <div className="pb-1 text-2xl text-mute">→</div>
+        <div className="text-right">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-mute">Ideal</div>
+          <div className="font-display text-3xl font-extrabold leading-none text-leaf">{fmt(ideal, decimals)}<span className="text-base font-semibold text-mute"> {unit}</span></div>
+        </div>
       </div>
-      <div className="relative h-9">
-        <div className="absolute inset-x-0 top-3.5 h-2 rounded-full bg-line" />
-        {/* tramo recorrido */}
-        <div className="absolute top-3.5 h-2 rounded-full" style={{ left: pos(Math.min(start, now)), width: `calc(${pos(Math.max(start, now))} - ${pos(Math.min(start, now))})`, background: better === 'down' ? (now <= start ? CORAL : '#CBBFB2') : now >= start ? BLUE : '#CBBFB2' }} />
-        {/* inicio */}
-        <div className="absolute top-2.5 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-ink/40 bg-paper" style={{ left: pos(start) }} title="inicio" />
-        {/* ideal */}
-        <div className="absolute top-0.5 -translate-x-1/2 text-lg leading-none" style={{ left: pos(ideal) }}>🚩</div>
-        {/* ahora */}
-        <div className="absolute top-2 h-5 w-5 -translate-x-1/2 rounded-full border-[3px] border-white shadow" style={{ left: pos(now), background: better === 'down' ? CORAL : BLUE }} />
+      <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-line">
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(2, pct * 100)}%`, background: reached ? GREEN : color }} />
       </div>
-      <div className="flex justify-between text-[11px] text-mute">
-        <span>inicio {fmt(start, decimals)}</span>
-        <span>hoy <b className="text-ink">{fmt(now, decimals)}</b> · {Math.round(pct * 100)}% del camino</span>
-        <span>ideal {fmt(ideal, decimals)}</span>
+      <div className="mt-1.5 flex justify-between text-[11px] text-mute">
+        <span>inicio {fmt(start, decimals)} {unit}</span>
+        <span>ideal</span>
       </div>
-      {note && <div className="mt-0.5 text-[11px] text-mute">{note}</div>}
+      <div className="mt-2 text-sm">
+        {reached ? (
+          <b className="text-leaf">¡Llegaste a tu ideal! 🎉</b>
+        ) : (
+          <>Te faltan <b>{fmt(left, decimals)} {unitLeft}</b>{done > 0 ? <> · vas en el <b>{Math.round(pct * 100)}%</b> del camino</> : null}</>
+        )}
+      </div>
+      {note && <div className="mt-1 text-[11px] text-mute">{note}</div>}
     </div>
   )
 }
