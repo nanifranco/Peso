@@ -1,15 +1,15 @@
-import type { State, WeighIn } from './types'
+import type { State } from './types'
 
 const KEY = 'peso:v1'
 
 export const emptyState = (): State => ({ weighIns: [], inbodies: [], events: [], unlocked: {} })
 
 /**
- * Historial personal opcional (src/seed.local.json, fuera de git porque el repo es público).
+ * Historial personal opcional (src/seed.json: tu historial real de antes de usar la app).
  * Si existe en el build, se mezcla una sola vez con lo que haya en el teléfono:
  * solo agrega los registros cuyas fechas no estén ya.
  */
-const seedFiles = import.meta.glob<{ default: State }>('../seed.local.json', { eager: true })
+const seedFiles = import.meta.glob<{ default: State }>('../seed.json', { eager: true })
 const SEED: State | undefined = Object.values(seedFiles)[0]?.default
 const SEED_FLAG = 'peso:seed-v1'
 
@@ -77,33 +77,4 @@ export function addDays(iso: string, n: number) {
   const d = new Date(iso + 'T12:00:00')
   d.setDate(d.getDate() + n)
   return todayISO(d)
-}
-
-/** Datos de ejemplo: ~5 meses de registros esporádicos y 3 InBody */
-export function demoState(): State {
-  const start = addDays(todayISO(), -150)
-  const weighIns: WeighIn[] = []
-  let kg = 86.4
-  let day = 0
-  let seed = 7
-  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280)
-  while (day <= 150) {
-    weighIns.push({ id: uid(), date: addDays(start, day), kg: Math.round((kg + (rnd() - 0.5) * 1.2) * 10) / 10 })
-    const gap = 3 + Math.floor(rnd() * 9)
-    day += gap
-    kg -= gap * 0.075
-  }
-  weighIns[2].note = 'Empecé a caminar a la uni'
-  weighIns[6].note = 'Semana de exámenes, comí fatal'
-  return {
-    profile: { name: 'Nani', sex: 'm', heightCm: 165, goalKg: 68 },
-    weighIns,
-    inbodies: [
-      { id: uid(), date: addDays(start, 2), kg: 86.1, fatPct: 41.2, fatKg: 35.5, muscleKg: 27.4, visceral: 12, bmr: 1480 },
-      { id: uid(), date: addDays(start, 70), kg: 81.6, fatPct: 38.3, fatKg: 31.3, muscleKg: 27.8, visceral: 10, bmr: 1468 },
-      { id: uid(), date: addDays(start, 140), kg: 76.9, fatPct: 34.6, fatKg: 26.6, muscleKg: 28.3, visceral: 8, bmr: 1462 },
-    ],
-    events: [{ id: uid(), name: 'Regreso a México', date: addDays(todayISO(), 45) }],
-    unlocked: {},
-  }
 }

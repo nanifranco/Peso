@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Achievement, State } from './lib/types'
 import { coachMessage, summary } from './lib/calc'
 import { syncUnlocked } from './lib/achievements'
-import { START_ID, addDays, demoState, emptyState, loadState, normalize, saveState, todayISO, uid, upsertStart } from './lib/store'
+import { START_ID, addDays, emptyState, loadState, normalize, saveState, todayISO, uid, upsertStart } from './lib/store'
 import { sortByDate } from './lib/calc'
 import { Celebration, Sheet, Toast } from './components/ui'
 import { EventForm, InBodyForm, ProfileForm, WeighInForm } from './components/Forms'
@@ -60,16 +60,6 @@ export default function App() {
             }}
           />
         </div>
-        <button
-          onClick={() => {
-            const { state: synced, fresh } = syncUnlocked(demoState())
-            setState(synced)
-            setQueue(fresh.filter((a) => a.big).slice(0, 2))
-          }}
-          className="mx-auto mt-4 text-sm font-semibold text-coral underline underline-offset-4"
-        >
-          Ver con datos de ejemplo
-        </button>
         <label className="mx-auto mt-3 cursor-pointer text-sm font-semibold text-ink/60 underline underline-offset-4">
           Tengo un respaldo (.json)
           <input type="file" accept="application/json,.json" className="hidden" onChange={async (e) => {
