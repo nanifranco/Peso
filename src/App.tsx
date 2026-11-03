@@ -108,7 +108,7 @@ export default function App() {
             sum={s}
             onDeleteWeighIn={(id) => state.weighIns.length > 1 && setState({ ...state, weighIns: state.weighIns.filter((w) => w.id !== id) })}
             onDeleteInBody={(id) => setState({ ...state, inbodies: state.inbodies.filter((i) => i.id !== id) })}
-            onSaveIdeals={(goalFatPct, goalMuscleKg) => commit({ ...state, profile: { ...state.profile!, goalFatPct, goalMuscleKg } })}
+            onOpenSettings={() => setTab('ajustes')}
           />
         )}
         {tab === 'ajustes' && <Ajustes state={state} onChange={(n) => commit(n, undefined, true)} onReset={() => { setState(emptyState()); setTab('inicio') }} />}
@@ -197,7 +197,7 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
     <div className="space-y-4">
       <h1 className="px-1 font-display text-3xl font-extrabold">Ajustes</h1>
       <section className="card p-5">
-        <h2 className="mb-3 font-display text-xl font-bold">Tus datos de inicio</h2>
+        <h2 className="mb-3 font-display text-xl font-bold">Tus datos</h2>
         <ProfileForm
           initial={state.profile}
           initialStart={first ? { kg: first.kg, date: first.date } : undefined}
@@ -217,7 +217,7 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
         />
       </section>
       <section className="card space-y-3 p-5">
-        <h2 className="font-display text-xl font-bold">Tus datos</h2>
+        <h2 className="font-display text-xl font-bold">Respaldo</h2>
         <p className="text-sm text-mute">Todo vive solo en este teléfono. Haz un respaldo de vez en cuando.</p>
         <button onClick={exportData} className="btn-ghost w-full">⬇️ Descargar respaldo</button>
         <button onClick={() => fileRef.current?.click()} className="btn-ghost w-full">⬆️ Restaurar respaldo</button>

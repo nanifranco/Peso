@@ -217,7 +217,7 @@ export function Logros({ state }: { state: State }) {
   )
 }
 
-export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody, onSaveIdeals }: { state: State; sum: Summary; onDeleteWeighIn: (id: string) => void; onDeleteInBody: (id: string) => void; onSaveIdeals: (fatPct?: number, muscleKg?: number) => void }) {
+export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody, onOpenSettings }: { state: State; sum: Summary; onDeleteWeighIn: (id: string) => void; onDeleteInBody: (id: string) => void; onOpenSettings: () => void }) {
   const [armed, setArmed] = useState<string | null>(null)
   const rows = [
     ...state.weighIns.map((w) => ({ t: 'w' as const, id: w.id, date: w.date, w })),
@@ -247,7 +247,7 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody, onSaveI
         <BmiGauge value={sum.curBmi} start={sum.startBmi} />
         <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
       </section>
-      <BodySection state={state} sum={sum} onSaveIdeals={onSaveIdeals} />
+      <BodySection state={state} sum={sum} onOpenSettings={onOpenSettings} />
       <h2 className="px-1 pt-2 font-display text-lg font-bold">Registros</h2>
       <section className="card divide-y divide-line overflow-hidden">
         {rows.map((r) => (
@@ -286,11 +286,8 @@ function Key({ c, o = '1', dot, dash }: { c: string; o?: string; dot?: boolean; 
 /* ------------------------------------------------------------------ */
 /* Tu cuerpo: ideales + gráficas del InBody                            */
 /* ------------------------------------------------------------------ */
-function BodySection({ state, sum, onSaveIdeals }: { state: State; sum: Summary; onSaveIdeals: (fatPct?: number, muscleKg?: number) => void }) {
+function BodySection({ state, sum, onOpenSettings }: { state: State; sum: Summary; onOpenSettings: () => void }) {
   const p = sum.p
-  const [fat, setFat] = useState(p.goalFatPct ? String(p.goalFatPct) : '')
-  const [mus, setMus] = useState(p.goalMuscleKg ? String(p.goalMuscleKg) : '')
-  const [saved, setSaved] = useState(false)
   const ib = sortByDate(state.inbodies)
   const f = sum.firstIB, l = sum.lastIB
   if (!l) {
@@ -301,7 +298,6 @@ function BodySection({ state, sum, onSaveIdeals }: { state: State; sum: Summary;
       </section>
     )
   }
-  const num = (v: string) => { const n = parseFloat(v.replace(',', '.')); return isFinite(n) && n > 0 ? n : undefined }
   const series = (k: 'fatPct' | 'fatKg' | 'muscleKg' | 'visceral' | 'bmr') => ib.filter((i) => i[k] != null).map((i) => ({ date: i.date, v: i[k] as number }))
   // Peso al que llegarías con tus ideales: masa magra actual (+ el músculo que quieras ganar) ÷ (1 − grasa ideal)
   const leanNow = l.kg != null && l.fatPct != null ? l.kg * (1 - l.fatPct / 100) : undefined
@@ -313,26 +309,11 @@ function BodySection({ state, sum, onSaveIdeals }: { state: State; sum: Summary;
     <>
       <section className="card space-y-4 p-4">
         <div>
-          <h2 className="font-display text-lg font-bold">Tus ideales</h2>
-          <p className="text-xs text-mute">Tu hoja de InBody trae el rango normal de grasa y músculo para ti; úsalo como guía.</p>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold">Tus ideales</h2>
+            <button onClick={onOpenSettings} className="text-sm font-semibold text-coral">Cambiar en Ajustes</button>
+          </div>
         </div>
-        <form className="grid grid-cols-[1fr_1fr_auto] items-end gap-2" onSubmit={(e) => { e.preventDefault(); onSaveIdeals(num(fat), num(mus)); setSaved(true); setTimeout(() => setSaved(false), 1500) }}>
-          <div>
-            <label className="label">Grasa ideal</label>
-            <div className="relative">
-              <input inputMode="decimal" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="30" className="field pr-8" />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-mute">%</span>
-            </div>
-          </div>
-          <div>
-            <label className="label">Músculo ideal</label>
-            <div className="relative">
-              <input inputMode="decimal" value={mus} onChange={(e) => setMus(e.target.value)} placeholder="31" className="field pr-9" />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-mute">kg</span>
-            </div>
-          </div>
-          <button className="btn-primary px-4!">{saved ? '✓' : 'Guardar'}</button>
-        </form>
         {p.goalFatPct && l.fatPct != null && <IdealBar label="Grasa corporal" unit="%" start={f?.fatPct ?? l.fatPct} now={sum.fatNow} ideal={p.goalFatPct} better="down" note={`“Hoy” es estimado con tu peso actual y la masa magra de tu InBody del ${dateLabel(l.date)}.`} />}
         {p.goalMuscleKg && l.muscleKg != null && <IdealBar label="Músculo esquelético" unit="kg" start={f?.muscleKg ?? l.muscleKg} now={l.muscleKg} ideal={p.goalMuscleKg} better="up" />}
         {idealWeight !== undefined && (
@@ -341,7 +322,7 @@ function BodySection({ state, sum, onSaveIdeals }: { state: State; sum: Summary;
             <div className="mt-1 text-[11px] text-ink/55">Calculado con tu masa magra del último InBody ({dateLabel(l.date)}). Es una aproximación.</div>
           </div>
         )}
-        {!p.goalFatPct && !p.goalMuscleKg && <p className="text-sm text-mute">Pon tus ideales y te enseño qué tan cerca vas y a qué peso llegarías.</p>}
+        {!p.goalFatPct && !p.goalMuscleKg && <button onClick={onOpenSettings} className="btn-ghost w-full text-sm">Pon tu grasa y músculo ideales en Ajustes →</button>}
       </section>
 
       <section className="card p-4">

@@ -132,12 +132,14 @@ export function ProfileForm({ initial, initialStart, onSave, withWeight, cta }: 
   const [start, setStart] = useState(initialStart ? String(initialStart.kg) : '')
   const [startDate, setStartDate] = useState(initialStart?.date ?? addDays(todayISO(), -30))
   const [kg, setKg] = useState('')
+  const [fatIdeal, setFatIdeal] = useState(initial?.goalFatPct ? String(initial.goalFatPct) : '')
+  const [musIdeal, setMusIdeal] = useState(initial?.goalMuscleKg ? String(initial.goalMuscleKg) : '')
   const ok = num(h) && (!withWeight || num(kg)) && (withWeight || num(start))
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
-        if (ok) onSave({ profile: { ...initial, name: 'Nani', sex: 'm', heightCm: num(h)!, goalKg: num(goal) }, startKg: num(start), startDate, todayKg: num(kg) })
+        if (ok) onSave({ profile: { ...initial, name: 'Nani', sex: 'm', heightCm: num(h)!, goalKg: num(goal), ...(withWeight ? {} : { goalFatPct: num(fatIdeal), goalMuscleKg: num(musIdeal) }) }, startKg: num(start), startDate, todayKg: num(kg) })
       }}
       className="space-y-4"
     >
@@ -165,6 +167,24 @@ export function ProfileForm({ initial, initialStart, onSave, withWeight, cta }: 
           <input inputMode="decimal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Sin meta: solo celebrar" className="field" />
         </div>
       </div>
+      {!withWeight && (
+        <div className="space-y-2 border-t border-line pt-4">
+          <div>
+            <div className="font-display text-lg font-bold">Tus ideales de cuerpo</div>
+            <p className="text-xs text-mute">Tu hoja de InBody trae el rango normal de grasa y músculo para ti; úsalo como guía. Se ven en Gráficas.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Grasa ideal (%)</label>
+              <input inputMode="decimal" value={fatIdeal} onChange={(e) => setFatIdeal(e.target.value)} placeholder="30" className="field" />
+            </div>
+            <div>
+              <label className="label">Músculo ideal (kg)</label>
+              <input inputMode="decimal" value={musIdeal} onChange={(e) => setMusIdeal(e.target.value)} placeholder="31" className="field" />
+            </div>
+          </div>
+        </div>
+      )}
       {withWeight && <p className="-mt-1 text-xs text-mute">Si ya venías bajando antes de usar la app, pon tu peso de cuando empezaste para que cuente todo lo que llevas.</p>}
       <button disabled={!ok} className="btn-primary w-full text-lg disabled:opacity-40">{cta}</button>
     </form>
