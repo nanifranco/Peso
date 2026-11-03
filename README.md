@@ -7,7 +7,7 @@ App para anotar tu peso de vez en cuando y que te celebre cada avance: kilos, gr
 - **Registro sin presión:** anotas el peso cuando quieras, con una nota opcional. La app calcula una **tendencia suavizada** (media móvil exponencial ajustada por los días entre registros) para que una subida de un día no cuente.
 - **Anillo de progreso:** un anillo con líquido adentro que se llena hacia tu meta, o hacia el siguiente escalón de 5% si no tienes meta.
 - **Gráficas:** peso con tendencia y proyección (toca para ver cada dato), kilos por mes, IMC, de qué estás hecha (dona del InBody), % de grasa, músculo, masa grasa, grasa vs. músculo, grasa visceral y metabolismo basal.
-- **Ideales de cuerpo:** en Ajustes pones tu % de grasa y tu músculo ideales; ves barras de qué tan cerca vas, las líneas de ideal en cada gráfica, el peso aproximado al que llegarías y logros al alcanzarlos.
+- **Ideales de cuerpo:** en Ajustes pones tu % de grasa y tu músculo ideales. En Gráficas: anillos de "qué tan cerca" (cuánto falta y % del camino) para peso ideal, grasa y músculo, y una gráfica de camino para cada uno con la franja de lo que falta, la línea del ideal y la fecha estimada a tu ritmo.
 - **Si subes de peso:** sin festejos ni logros, solo "No pasa nada 💛".
 - **Peso al empezar:** si ya venías bajando antes de usar la app, pones tu peso y la fecha en que empezaste (también se puede cambiar en Ajustes) y cuenta todo lo que llevas.
 - **Logros en 5 categorías:**

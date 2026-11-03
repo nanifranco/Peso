@@ -418,3 +418,142 @@ export function IdealBar({ label, unit, start, now, ideal, better, decimals = 1,
     </div>
   )
 }
+
+/** Pendiente (unidades por semana) de una serie, regresión lineal sobre las últimas ~8 semanas */
+export function slopePerWeek(points: { date: string; v: number }[]) {
+  const s = sortByDate(points)
+  if (s.length < 2) return undefined
+  const lastD = s[s.length - 1].date
+  let pts = s.filter((p) => daysBetween(p.date, lastD) <= 56)
+  if (pts.length < 2) pts = s.slice(-2)
+  const xs = pts.map((p) => daysBetween(pts[0].date, p.date))
+  if (xs[xs.length - 1] < 5) return undefined
+  const n = xs.length, mx = xs.reduce((a, b) => a + b, 0) / n, my = pts.reduce((a, p) => a + p.v, 0) / n
+  let num = 0, den = 0
+  xs.forEach((x, i) => { num += (x - mx) * (pts[i].v - my); den += (x - mx) ** 2 })
+  return den ? (num / den) * 7 : undefined
+}
+
+/* ------------------------------------------------------------------ */
+/* Anillo "qué tan cerca": % del camino + cuánto falta en el centro     */
+/* ------------------------------------------------------------------ */
+export function GoalRing({ title, start, now, ideal, better, unit, color, decimals = 1 }: {
+  title: string; start: number; now: number; ideal: number; better: 'down' | 'up'; unit: string; color: string; decimals?: number
+}) {
+  const total = Math.abs(start - ideal)
+  const done = better === 'down' ? start - now : now - start
+  const reached = better === 'down' ? now <= ideal : now >= ideal
+  const pct = reached ? 1 : total > 0 ? Math.max(0, Math.min(1, done / total)) : 0
+  const left = Math.abs(now - ideal)
+  const R = 40, C = 2 * Math.PI * R
+  const c = reached ? GREEN : color
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="mb-1 text-xs font-bold uppercase tracking-wider text-mute">{title}</div>
+      <svg viewBox="0 0 100 100" width="100%" className="max-w-[110px]">
+        <circle cx="50" cy="50" r={R} fill="none" stroke={GRID} strokeWidth="9" />
+        <circle cx="50" cy="50" r={R} fill="none" stroke={c} strokeWidth="9" strokeLinecap="round"
+          strokeDasharray={`${C * Math.max(0.01, pct)} ${C}`} transform="rotate(-90 50 50)" style={{ transition: 'stroke-dasharray 1s' }} />
+        {reached ? (
+          <text x="50" y="58" textAnchor="middle" fontSize="26">🎉</text>
+        ) : (
+          <>
+            <text x="50" y="40" textAnchor="middle" fontSize="9" fill={MUTE} fontWeight="600">faltan</text>
+            <text x="50" y="59" textAnchor="middle" fontSize="20" fontWeight="800" fill={INK}>{fmt(left, decimals)}</text>
+            <text x="50" y="71" textAnchor="middle" fontSize="9" fill={MUTE}>{unit === '%' ? 'puntos' : unit}</text>
+          </>
+        )}
+      </svg>
+      <div className="mt-1 font-display text-lg font-extrabold leading-none" style={{ color: c }}>{Math.round(pct * 100)}%</div>
+      <div className="text-[11px] text-mute">del camino</div>
+      <div className="mt-1 text-[11px] text-ink/70">{fmt(now, decimals)} → <b className="text-leaf">{fmt(ideal, decimals)}</b> {unit}</div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Camino hacia el ideal: historia + línea de ideal + "faltan" + fecha  */
+/* ------------------------------------------------------------------ */
+export function GapChart({ points, ideal, better, unit, color, decimals = 1, estimated = false }: {
+  points: { date: string; v: number }[]; ideal: number; better: 'down' | 'up'; unit: string; color: string; decimals?: number; estimated?: boolean
+}) {
+  const gid = useId().replace(/:/g, '')
+  const s = sortByDate(points)
+  if (!s.length) return null
+  const last = s[s.length - 1]
+  const reached = better === 'down' ? last.v <= ideal : last.v >= ideal
+  const rate = slopePerWeek(s)
+  const goingRight = rate !== undefined && (better === 'down' ? rate < -0.01 : rate > 0.01)
+  let eta: string | undefined
+  if (!reached && goingRight) {
+    const weeks = (ideal - last.v) / rate!
+    if (weeks > 0 && weeks < 156) eta = addDaysISO(last.date, Math.round(weeks * 7))
+  }
+  const W = 340, H = 180, pl = 30, pr = 74, pt = 14, pb = 22
+  const endDate = eta ?? last.date
+  const span = Math.max(1, daysBetween(s[0].date, endDate))
+  const vals = s.map((p) => p.v).concat([ideal])
+  const pad = Math.max(0.5, (Math.max(...vals) - Math.min(...vals)) * 0.08)
+  const lo = Math.min(...vals) - pad, hi = Math.max(...vals) + pad
+  const x = (d: string) => (s.length === 1 && !eta ? pl + (W - pl - pr) / 2 : pl + (daysBetween(s[0].date, d) / span) * (W - pl - pr))
+  const y = (v: number) => pt + ((hi - v) / (hi - lo)) * (H - pt - pb)
+  const line = s.map((p, i) => `${i ? 'L' : 'M'} ${x(p.date).toFixed(1)} ${y(p.v).toFixed(1)}`).join(' ')
+  const lx = x(last.date)
+  const gap = Math.abs(last.v - ideal)
+  const firstD = new Date(s[0].date + 'T12:00:00')
+  const months: { x: number; l: string }[] = []
+  for (let m = new Date(firstD.getFullYear(), firstD.getMonth() + 1, 1); daysBetween(s[0].date, iso(m)) <= span; m.setMonth(m.getMonth() + 1)) months.push({ x: x(iso(m)), l: MONTHS[m.getMonth()] })
+  const bx = W - pr + 10 // columna derecha para la llave "faltan"
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        <defs>
+          <linearGradient id={`gap-${gid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={color} stopOpacity=".16" />
+            <stop offset="1" stopColor={color} stopOpacity=".04" />
+          </linearGradient>
+        </defs>
+        {[0, 1, 2, 3].map((i) => {
+          const v = lo + ((hi - lo) * i) / 3
+          return <g key={i}><line x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} stroke={GRID} /><text x={pl - 5} y={y(v) + 3} fontSize="9" textAnchor="end" fill={MUTE}>{fmt(v, hi - lo < 8 ? 1 : 0)}</text></g>
+        })}
+        {months.map((m) => <text key={m.x} x={m.x} y={H - 6} fontSize="9" textAnchor="middle" fill={MUTE}>{m.l}</text>)}
+        {/* lo que falta: banda entre tu valor de hoy y el ideal */}
+        {!reached && <rect x={pl} y={Math.min(y(last.v), y(ideal))} width={W - pr - pl} height={Math.abs(y(last.v) - y(ideal))} fill={`url(#gap-${gid})`} />}
+        {/* ideal */}
+        <line x1={pl} x2={W - pr} y1={y(ideal)} y2={y(ideal)} stroke={GREEN} strokeWidth="2" strokeDasharray="5 4" />
+        <text x={pl + 4} y={y(ideal) + (better === 'down' ? 12 : -5)} fontSize="9.5" fontWeight="700" fill="#1E8A5B">🚩 ideal {fmt(ideal, decimals)} {unit}</text>
+        {/* historia */}
+        <path d={line} fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        {!estimated && s.map((p) => <circle key={p.date} cx={x(p.date)} cy={y(p.v)} r="3.5" fill={color} stroke="#fff" strokeWidth="1.5" />)}
+        {/* proyección */}
+        {eta && (
+          <g>
+            <line x1={lx} y1={y(last.v)} x2={x(eta)} y2={y(ideal)} stroke={color} strokeWidth="2" strokeDasharray="2 4" strokeLinecap="round" />
+            <circle cx={x(eta)} cy={y(ideal)} r="5" fill="#fff" stroke={GREEN} strokeWidth="2.5" />
+          </g>
+        )}
+        {/* hoy */}
+        <circle cx={lx} cy={y(last.v)} r="6" fill={color} stroke="#fff" strokeWidth="2.5" />
+        <text x={lx} y={y(last.v) + (better === 'down' ? -11 : 17)} fontSize="10" fontWeight="800" textAnchor="middle" fill={INK}>hoy {fmt(last.v, decimals)}</text>
+        {/* llave "faltan X" a la derecha */}
+        {!reached ? (
+          <g>
+            <path d={`M ${bx} ${y(last.v)} h 6 V ${y(ideal)} h -6`} fill="none" stroke={INK} strokeOpacity=".5" strokeWidth="1.5" />
+            <line x1={lx + 8} x2={bx - 2} y1={y(last.v)} y2={y(last.v)} stroke={INK} strokeOpacity=".2" strokeDasharray="2 3" />
+            <text x={bx + 12} y={(y(last.v) + y(ideal)) / 2 - 4} fontSize="9" fill={MUTE}>faltan</text>
+            <text x={bx + 12} y={(y(last.v) + y(ideal)) / 2 + 10} fontSize="14" fontWeight="800" fill={INK}>{fmt(gap, decimals)}</text>
+            <text x={bx + 12} y={(y(last.v) + y(ideal)) / 2 + 22} fontSize="9" fill={MUTE}>{unit === '%' ? 'puntos' : unit}</text>
+          </g>
+        ) : (
+          <text x={bx + 4} y={y(ideal) + 4} fontSize="12" fontWeight="800" fill="#1E8A5B">¡Llegaste!</text>
+        )}
+      </svg>
+      <p className="mt-1 text-sm">
+        {reached ? <b className="text-leaf">Ya estás en tu ideal 🎉</b>
+          : eta ? <>A tu ritmo de los últimos meses llegarías por <b>{new Date(eta + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}</b>.</>
+          : <>Te faltan <b>{fmt(gap, decimals)} {unit === '%' ? 'puntos' : unit}</b>. Con más registros te digo para cuándo llegarías.</>}
+      </p>
+    </div>
+  )
+}

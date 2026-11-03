@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type { Achievement, State } from './lib/types'
-import { bmiCategory, daysBetween, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
+import { bmiCategory, daysBetween, estBodyFat, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
 import { KIND_LABEL, nextWeightMilestone, withHistory } from './lib/achievements'
 import { todayISO } from './lib/store'
-import { BodyDonut, CompositionChart, IdealBar, MetricChart, MonthlyBars, ProgressRing, WeightChart } from './components/Charts'
+import { BodyDonut, CompositionChart, GapChart, GoalRing, MetricChart, MonthlyBars, ProgressRing, WeightChart } from './components/Charts'
 import BmiGauge from './components/BmiGauge'
 import { Progress } from './components/ui'
 
@@ -304,6 +304,9 @@ function BodySection({ state, sum, onOpenSettings }: { state: State; sum: Summar
   const leanIdeal = leanNow !== undefined ? leanNow + (p.goalMuscleKg && l.muscleKg != null ? Math.max(0, p.goalMuscleKg - l.muscleKg) : 0) : undefined
   const idealWeight = leanIdeal !== undefined && p.goalFatPct ? leanIdeal / (1 - p.goalFatPct / 100) : undefined
   const idealFatKg = idealWeight !== undefined && p.goalFatPct ? idealWeight * (p.goalFatPct / 100) : undefined
+  const weightIdeal = idealWeight ?? (p.goalKg && sum.startKg > p.goalKg ? p.goalKg : undefined)
+  const fatSeries = sortByDate(state.weighIns).map((w) => ({ date: w.date, v: estBodyFat(w.kg, state) }))
+  const fatStart = fatSeries[0]?.v ?? sum.fatNow
 
   return (
     <>
@@ -314,16 +317,43 @@ function BodySection({ state, sum, onOpenSettings }: { state: State; sum: Summar
             <button onClick={onOpenSettings} className="text-sm font-semibold text-coral">Cambiar en Ajustes</button>
           </div>
         </div>
-        {p.goalFatPct && l.fatPct != null && <IdealBar label="Grasa corporal" unit="%" start={f?.fatPct ?? l.fatPct} now={sum.fatNow} ideal={p.goalFatPct} better="down" note={`“Hoy” es estimado con tu peso actual y la masa magra de tu InBody del ${dateLabel(l.date)}.`} />}
-        {p.goalMuscleKg && l.muscleKg != null && <IdealBar label="Músculo esquelético" unit="kg" start={f?.muscleKg ?? l.muscleKg} now={l.muscleKg} ideal={p.goalMuscleKg} better="up" />}
-        {idealWeight !== undefined && (
-          <div className="rounded-2xl bg-sun/25 p-3 text-sm leading-relaxed">
-            Con <b>{fmt(p.goalFatPct!, 0)}% de grasa</b>{p.goalMuscleKg ? <> y <b>{fmt(p.goalMuscleKg)} kg de músculo</b></> : null}, pesarías alrededor de <b className="font-display text-lg">{fmt(idealWeight)} kg</b>{idealFatKg !== undefined && <> (unos {fmt(idealFatKg)} kg de grasa)</>}. Hoy estás en {fmt(sum.current)} kg: {sum.current > idealWeight ? <>te faltan <b>{fmt(sum.current - idealWeight)} kg</b>.</> : <>¡ya estás ahí!</>}
-            <div className="mt-1 text-[11px] text-ink/55">Calculado con tu masa magra del último InBody ({dateLabel(l.date)}). Es una aproximación.</div>
+        {(weightIdeal !== undefined || p.goalFatPct || p.goalMuscleKg) && (
+          <div className="grid grid-cols-3 gap-2">
+            {weightIdeal !== undefined && <GoalRing title="Peso" start={sum.startKg} now={sum.current} ideal={weightIdeal} better="down" unit="kg" color="#E2512F" />}
+            {p.goalFatPct && <GoalRing title="Grasa" start={fatStart} now={sum.fatNow} ideal={p.goalFatPct} better="down" unit="%" color="#F08A24" />}
+            {p.goalMuscleKg && l.muscleKg != null && <GoalRing title="Músculo" start={f?.muscleKg ?? l.muscleKg} now={l.muscleKg} ideal={p.goalMuscleKg} better="up" unit="kg" color="#3F6FD8" />}
           </div>
+        )}
+        {idealWeight !== undefined && (
+          <p className="rounded-2xl bg-sun/25 p-3 text-[13px] leading-relaxed">
+            Tu <b>peso ideal</b> sale de tus ideales: con {fmt(p.goalFatPct!, 0)}% de grasa{p.goalMuscleKg ? <> y {fmt(p.goalMuscleKg)} kg de músculo</> : null} pesarías unos <b>{fmt(idealWeight)} kg</b>. Se calcula con tu masa magra del InBody del {dateLabel(l.date)}; es una aproximación.
+          </p>
         )}
         {!p.goalFatPct && !p.goalMuscleKg && <button onClick={onOpenSettings} className="btn-ghost w-full text-sm">Pon tu grasa y músculo ideales en Ajustes →</button>}
       </section>
+
+      {weightIdeal !== undefined && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">Camino a tu peso ideal</h2>
+          <p className="mb-1 text-xs text-mute">La franja es lo que te falta; la línea punteada, a dónde llegas a tu ritmo.</p>
+          <GapChart points={state.weighIns.map((w) => ({ date: w.date, v: w.kg }))} ideal={weightIdeal} better="down" unit="kg" color="#E2512F" />
+        </section>
+      )}
+      {p.goalFatPct && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">Camino a tu grasa ideal</h2>
+          <p className="mb-1 text-xs text-mute">% de grasa estimado con cada peso que anotaste y tu masa magra del InBody.</p>
+          <GapChart points={fatSeries} ideal={p.goalFatPct} better="down" unit="%" color="#F08A24" estimated />
+        </section>
+      )}
+      {p.goalMuscleKg && series('muscleKg').length > 0 && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">Camino a tu músculo ideal</h2>
+          <p className="mb-1 text-xs text-mute">Músculo esquelético de cada InBody.</p>
+          <GapChart points={series('muscleKg')} ideal={p.goalMuscleKg} better="up" unit="kg" color="#3F6FD8" />
+        </section>
+      )}
+
 
       <section className="card p-4">
         <h2 className="font-display text-lg font-bold">De qué estás hecha</h2>
