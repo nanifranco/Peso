@@ -107,6 +107,7 @@ export default function App() {
             sum={s}
             onDeleteWeighIn={(id) => state.weighIns.length > 1 && setState({ ...state, weighIns: state.weighIns.filter((w) => w.id !== id) })}
             onDeleteInBody={(id) => setState({ ...state, inbodies: state.inbodies.filter((i) => i.id !== id) })}
+            onSaveIdeals={(goalFatPct, goalMuscleKg) => commit({ ...state, profile: { ...state.profile!, goalFatPct, goalMuscleKg } })}
           />
         )}
         {tab === 'ajustes' && <Ajustes state={state} onChange={(n) => commit(n, undefined, true)} onReset={() => { setState(emptyState()); setTab('inicio') }} />}

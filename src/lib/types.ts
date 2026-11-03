@@ -5,6 +5,10 @@ export interface Profile {
   sex: Sex
   heightCm: number
   goalKg?: number
+  /** % de grasa ideal (meta de cuerpo) */
+  goalFatPct?: number
+  /** músculo esquelético ideal en kg */
+  goalMuscleKg?: number
 }
 
 export interface WeighIn {

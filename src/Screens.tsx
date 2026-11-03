@@ -3,7 +3,7 @@ import type { Achievement, State } from './lib/types'
 import { bmiCategory, daysBetween, fmt, predictFor, sortByDate, type Summary } from './lib/calc'
 import { KIND_LABEL, nextWeightMilestone, withHistory } from './lib/achievements'
 import { todayISO } from './lib/store'
-import { BodyDonut, CompositionChart, MonthlyBars, ProgressRing, WeightChart } from './components/Charts'
+import { BodyDonut, CompositionChart, IdealBar, MetricChart, MonthlyBars, ProgressRing, WeightChart } from './components/Charts'
 import BmiGauge from './components/BmiGauge'
 import { Progress } from './components/ui'
 
@@ -13,7 +13,7 @@ function Delta({ v, unit, goodWhen }: { v?: number; unit: string; goodWhen: 'dow
   if (v === undefined || Math.abs(v) < 0.05) return <span className="text-xs text-mute">—</span>
   const good = goodWhen === 'down' ? v < 0 : v > 0
   return (
-    <span className={`text-xs font-semibold ${good ? 'text-leaf' : 'text-coral'}`}>
+    <span className={`text-xs font-semibold ${good ? 'text-leaf' : 'text-mute'}`}>
       {v > 0 ? '▲' : '▼'} {fmt(Math.abs(v))} {unit}
     </span>
   )
@@ -217,7 +217,7 @@ export function Logros({ state }: { state: State }) {
   )
 }
 
-export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody }: { state: State; sum: Summary; onDeleteWeighIn: (id: string) => void; onDeleteInBody: (id: string) => void }) {
+export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody, onSaveIdeals }: { state: State; sum: Summary; onDeleteWeighIn: (id: string) => void; onDeleteInBody: (id: string) => void; onSaveIdeals: (fatPct?: number, muscleKg?: number) => void }) {
   const [armed, setArmed] = useState<string | null>(null)
   const rows = [
     ...state.weighIns.map((w) => ({ t: 'w' as const, id: w.id, date: w.date, w })),
@@ -247,20 +247,7 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody }: { sta
         <BmiGauge value={sum.curBmi} start={sum.startBmi} />
         <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
       </section>
-      {sum.lastIB && (
-        <section className="card space-y-4 p-4">
-          <div>
-            <h2 className="font-display text-lg font-bold">De qué estás hecha</h2>
-            <p className="mb-3 text-xs text-mute">Tu último InBody ({dateLabel(sum.lastIB.date)})</p>
-            <BodyDonut ib={sum.lastIB} />
-          </div>
-          <div>
-            <h2 className="font-display text-lg font-bold">Grasa vs. músculo</h2>
-            <p className="mb-2 text-xs text-mute"><Key c="#E2512F" /> grasa · <Key c="#3F6FD8" /> músculo (kg)</p>
-            <CompositionChart ib={state.inbodies} />
-          </div>
-        </section>
-      )}
+      <BodySection state={state} sum={sum} onSaveIdeals={onSaveIdeals} />
       <h2 className="px-1 pt-2 font-display text-lg font-bold">Registros</h2>
       <section className="card divide-y divide-line overflow-hidden">
         {rows.map((r) => (
@@ -294,4 +281,114 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody }: { sta
 function Key({ c, o = '1', dot, dash }: { c: string; o?: string; dot?: boolean; dash?: boolean }) {
   if (dot) return <span className="inline-block h-2 w-2 rounded-full align-middle" style={{ background: c, opacity: o }} />
   return <span className="inline-block w-4 align-middle" style={{ borderTop: `2.5px ${dash ? 'dotted' : 'solid'} ${c}` }} />
+}
+
+/* ------------------------------------------------------------------ */
+/* Tu cuerpo: ideales + gráficas del InBody                            */
+/* ------------------------------------------------------------------ */
+function BodySection({ state, sum, onSaveIdeals }: { state: State; sum: Summary; onSaveIdeals: (fatPct?: number, muscleKg?: number) => void }) {
+  const p = sum.p
+  const [fat, setFat] = useState(p.goalFatPct ? String(p.goalFatPct) : '')
+  const [mus, setMus] = useState(p.goalMuscleKg ? String(p.goalMuscleKg) : '')
+  const [saved, setSaved] = useState(false)
+  const ib = sortByDate(state.inbodies)
+  const f = sum.firstIB, l = sum.lastIB
+  if (!l) {
+    return (
+      <section className="card p-5 text-sm text-mute">
+        <h2 className="mb-1 font-display text-lg font-bold text-ink">Tu cuerpo</h2>
+        Sube un InBody (botón +) y aquí aparecen tus gráficas de grasa, músculo, visceral y metabolismo, y puedes ponerte ideales.
+      </section>
+    )
+  }
+  const num = (v: string) => { const n = parseFloat(v.replace(',', '.')); return isFinite(n) && n > 0 ? n : undefined }
+  const series = (k: 'fatPct' | 'fatKg' | 'muscleKg' | 'visceral' | 'bmr') => ib.filter((i) => i[k] != null).map((i) => ({ date: i.date, v: i[k] as number }))
+  // Peso al que llegarías con tus ideales: masa magra actual (+ el músculo que quieras ganar) ÷ (1 − grasa ideal)
+  const leanNow = l.kg != null && l.fatPct != null ? l.kg * (1 - l.fatPct / 100) : undefined
+  const leanIdeal = leanNow !== undefined ? leanNow + (p.goalMuscleKg && l.muscleKg != null ? Math.max(0, p.goalMuscleKg - l.muscleKg) : 0) : undefined
+  const idealWeight = leanIdeal !== undefined && p.goalFatPct ? leanIdeal / (1 - p.goalFatPct / 100) : undefined
+  const idealFatKg = idealWeight !== undefined && p.goalFatPct ? idealWeight * (p.goalFatPct / 100) : undefined
+
+  return (
+    <>
+      <section className="card space-y-4 p-4">
+        <div>
+          <h2 className="font-display text-lg font-bold">Tus ideales</h2>
+          <p className="text-xs text-mute">Tu hoja de InBody trae el rango normal de grasa y músculo para ti; úsalo como guía.</p>
+        </div>
+        <form className="grid grid-cols-[1fr_1fr_auto] items-end gap-2" onSubmit={(e) => { e.preventDefault(); onSaveIdeals(num(fat), num(mus)); setSaved(true); setTimeout(() => setSaved(false), 1500) }}>
+          <div>
+            <label className="label">Grasa ideal</label>
+            <div className="relative">
+              <input inputMode="decimal" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="30" className="field pr-8" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-mute">%</span>
+            </div>
+          </div>
+          <div>
+            <label className="label">Músculo ideal</label>
+            <div className="relative">
+              <input inputMode="decimal" value={mus} onChange={(e) => setMus(e.target.value)} placeholder="31" className="field pr-9" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-mute">kg</span>
+            </div>
+          </div>
+          <button className="btn-primary px-4!">{saved ? '✓' : 'Guardar'}</button>
+        </form>
+        {p.goalFatPct && l.fatPct != null && <IdealBar label="Grasa corporal" unit="%" start={f?.fatPct ?? l.fatPct} now={sum.fatNow} ideal={p.goalFatPct} better="down" note={`“Hoy” es estimado con tu peso actual y la masa magra de tu InBody del ${dateLabel(l.date)}.`} />}
+        {p.goalMuscleKg && l.muscleKg != null && <IdealBar label="Músculo esquelético" unit="kg" start={f?.muscleKg ?? l.muscleKg} now={l.muscleKg} ideal={p.goalMuscleKg} better="up" />}
+        {idealWeight !== undefined && (
+          <div className="rounded-2xl bg-sun/25 p-3 text-sm leading-relaxed">
+            Con <b>{fmt(p.goalFatPct!, 0)}% de grasa</b>{p.goalMuscleKg ? <> y <b>{fmt(p.goalMuscleKg)} kg de músculo</b></> : null}, pesarías alrededor de <b className="font-display text-lg">{fmt(idealWeight)} kg</b>{idealFatKg !== undefined && <> (unos {fmt(idealFatKg)} kg de grasa)</>}. Hoy estás en {fmt(sum.current)} kg: {sum.current > idealWeight ? <>te faltan <b>{fmt(sum.current - idealWeight)} kg</b>.</> : <>¡ya estás ahí!</>}
+            <div className="mt-1 text-[11px] text-ink/55">Calculado con tu masa magra del último InBody ({dateLabel(l.date)}). Es una aproximación.</div>
+          </div>
+        )}
+        {!p.goalFatPct && !p.goalMuscleKg && <p className="text-sm text-mute">Pon tus ideales y te enseño qué tan cerca vas y a qué peso llegarías.</p>}
+      </section>
+
+      <section className="card p-4">
+        <h2 className="font-display text-lg font-bold">De qué estás hecha</h2>
+        <p className="mb-3 text-xs text-mute">Tu último InBody ({dateLabel(l.date)})</p>
+        <BodyDonut ib={l} />
+      </section>
+
+      {series('fatPct').length > 0 && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">% de grasa</h2>
+          <MetricChart points={series('fatPct')} color="#E2512F" unit="%" ideal={p.goalFatPct} better="down" />
+        </section>
+      )}
+      {series('muscleKg').length > 0 && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">Músculo esquelético</h2>
+          <MetricChart points={series('muscleKg')} color="#3F6FD8" unit="kg" ideal={p.goalMuscleKg} better="up" />
+        </section>
+      )}
+      {series('fatKg').length > 0 && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">Masa grasa</h2>
+          <MetricChart points={series('fatKg')} color="#E2512F" unit="kg" ideal={idealFatKg} better="down" />
+        </section>
+      )}
+      {ib.length > 1 && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">Grasa vs. músculo</h2>
+          <p className="mb-2 text-xs text-mute"><Key c="#E2512F" /> grasa · <Key c="#3F6FD8" /> músculo (kg)</p>
+          <CompositionChart ib={state.inbodies} />
+        </section>
+      )}
+      {series('visceral').length > 0 && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">Grasa visceral</h2>
+          <p className="text-xs text-mute">La que rodea tus órganos. En InBody, menos de 10 es el rango sano.</p>
+          <MetricChart points={series('visceral')} color="#C2407A" unit="nivel" healthyBelow={10} better="down" decimals={0} />
+        </section>
+      )}
+      {series('bmr').length > 0 && (
+        <section className="card p-4">
+          <h2 className="font-display text-lg font-bold">Metabolismo basal</h2>
+          <p className="text-xs text-mute">Lo que tu cuerpo quema en reposo. El músculo lo sostiene.</p>
+          <MetricChart points={series('bmr')} color="#3F6FD8" unit="kcal" better="up" decimals={0} />
+        </section>
+      )}
+    </>
+  )
 }

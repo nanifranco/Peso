@@ -284,3 +284,134 @@ export function BodyDonut({ ib }: { ib?: InBody }) {
     </div>
   )
 }
+
+/* ------------------------------------------------------------------ */
+/* Una métrica del InBody en el tiempo, con su ideal                   */
+/* ------------------------------------------------------------------ */
+export function MetricChart({ points, color, unit, ideal, idealLabel = 'ideal', better, healthyBelow, decimals = 1 }: {
+  points: { date: string; v: number }[]
+  color: string
+  unit: string
+  ideal?: number
+  idealLabel?: string
+  better: 'down' | 'up'
+  healthyBelow?: number
+  decimals?: number
+}) {
+  const [hover, setHover] = useState<number | null>(null)
+  const s = sortByDate(points)
+  if (s.length === 0) return <p className="py-4 text-center text-sm text-mute">Sin datos todavía.</p>
+  const W = 340, H = 140, pl = 30, pr = 12, pt = 16, pb = 20
+  const ref = ideal ?? healthyBelow
+  const vals = s.map((p) => p.v).concat(ref !== undefined ? [ref] : [])
+  const pad = Math.max(0.5, (Math.max(...vals) - Math.min(...vals)) * 0.15)
+  const lo = Math.min(...vals) - pad, hi = Math.max(...vals) + pad
+  const span = Math.max(1, daysBetween(s[0].date, s[s.length - 1].date))
+  const x = (d: string) => (s.length === 1 ? (pl + W - pr) / 2 : pl + (daysBetween(s[0].date, d) / span) * (W - pl - pr))
+  const y = (v: number) => pt + ((hi - v) / (hi - lo)) * (H - pt - pb)
+  const path = s.map((p, i) => `${i ? 'L' : 'M'} ${x(p.date)} ${y(p.v)}`).join(' ')
+  const fmtv = (v: number) => fmt(v, decimals)
+  const first = s[0], last = s[s.length - 1]
+  const delta = last.v - first.v
+  const good = better === 'down' ? delta < 0 : delta > 0
+  const move = (e: PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const px = ((e.clientX - r.left) / r.width) * W
+    let best = 0
+    s.forEach((p, i) => { if (Math.abs(x(p.date) - px) < Math.abs(x(s[best].date) - px)) best = i })
+    setHover(best)
+  }
+  const h = hover !== null ? s[hover] : null
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline gap-2">
+        <span className="font-display text-2xl font-extrabold">{fmtv(last.v)}</span>
+        <span className="text-sm text-mute">{unit}</span>
+        {s.length > 1 && Math.abs(delta) >= 0.05 && (
+          <span className={`text-xs font-bold ${good ? 'text-leaf' : 'text-mute'}`}>{delta > 0 ? '▲' : '▼'} {fmtv(Math.abs(delta))} desde {short(first.date)}</span>
+        )}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full touch-none select-none" onPointerMove={move} onPointerDown={move} onPointerLeave={() => setHover(null)}>
+        {/* zona buena */}
+        {ref !== undefined && (
+          <rect x={pl} width={W - pl - pr}
+            y={better === 'down' ? y(Math.min(ref, hi)) : pt}
+            height={better === 'down' ? H - pb - y(Math.min(ref, hi)) : Math.max(0, y(Math.max(ref, lo)) - pt)}
+            fill={GREEN} opacity=".08" />
+        )}
+        {[0, 1, 2].map((i) => {
+          const v = lo + ((hi - lo) * i) / 2
+          return (
+            <g key={i}>
+              <line x1={pl} x2={W - pr} y1={y(v)} y2={y(v)} stroke={GRID} />
+              <text x={pl - 5} y={y(v) + 3} fontSize="9" textAnchor="end" fill={MUTE}>{fmt(v, v >= 100 ? 0 : decimals)}</text>
+            </g>
+          )
+        })}
+        {ref !== undefined && (
+          <g>
+            <line x1={pl} x2={W - pr} y1={y(ref)} y2={y(ref)} stroke={GREEN} strokeWidth="1.5" strokeDasharray="4 4" />
+            <text x={W - pr} y={y(ref) - 4} fontSize="9" fontWeight="700" textAnchor="end" fill="#1E8A5B">{ideal !== undefined ? idealLabel : 'rango sano'} {fmtv(ref)}</text>
+          </g>
+        )}
+        {s.map((p) => <text key={p.date} x={x(p.date)} y={H - 5} fontSize="9" textAnchor="middle" fill={MUTE}>{short(p.date)}</text>)}
+        <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {s.map((p) => <circle key={p.date} cx={x(p.date)} cy={y(p.v)} r="4.5" fill={color} stroke="#fff" strokeWidth="2" />)}
+        {h && (() => {
+          const bx = Math.min(W - pr - 80, Math.max(pl, x(h.date) - 40))
+          return (
+            <g pointerEvents="none">
+              <line x1={x(h.date)} x2={x(h.date)} y1={pt} y2={H - pb} stroke={INK} strokeOpacity=".25" />
+              <rect x={bx} y={0} width="80" height="22" rx="7" fill={INK} />
+              <text x={bx + 40} y={15} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#fff">{fmtv(h.v)} {unit} · {short(h.date)}</text>
+            </g>
+          )
+        })()}
+      </svg>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Barras de "qué tan cerca estás" de tus ideales                       */
+/* ------------------------------------------------------------------ */
+export function IdealBar({ label, unit, start, now, ideal, better, decimals = 1, note }: {
+  label: string; unit: string; start: number; now: number; ideal: number; better: 'down' | 'up'; decimals?: number; note?: string
+}) {
+  const lo = Math.min(start, now, ideal), hi = Math.max(start, now, ideal)
+  const pad = (hi - lo) * 0.12 || 1
+  const a = lo - pad, b = hi + pad
+  const pos = (v: number) => `${((v - a) / (b - a)) * 100}%`
+  const total = Math.abs(start - ideal)
+  const done = better === 'down' ? start - now : now - start
+  const pct = total > 0 ? Math.max(0, Math.min(1, done / total)) : now === ideal ? 1 : 0
+  const reached = better === 'down' ? now <= ideal : now >= ideal
+  const left = Math.abs(now - ideal)
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <span className="font-semibold">{label}</span>
+        <span className="text-sm">
+          {reached ? <b className="text-leaf">¡Llegaste! 🎉</b> : <><b>{fmt(left, decimals)} {unit}</b> <span className="text-mute">para tu ideal</span></>}
+        </span>
+      </div>
+      <div className="relative h-9">
+        <div className="absolute inset-x-0 top-3.5 h-2 rounded-full bg-line" />
+        {/* tramo recorrido */}
+        <div className="absolute top-3.5 h-2 rounded-full" style={{ left: pos(Math.min(start, now)), width: `calc(${pos(Math.max(start, now))} - ${pos(Math.min(start, now))})`, background: better === 'down' ? (now <= start ? CORAL : '#CBBFB2') : now >= start ? BLUE : '#CBBFB2' }} />
+        {/* inicio */}
+        <div className="absolute top-2.5 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-ink/40 bg-paper" style={{ left: pos(start) }} title="inicio" />
+        {/* ideal */}
+        <div className="absolute top-0.5 -translate-x-1/2 text-lg leading-none" style={{ left: pos(ideal) }}>🚩</div>
+        {/* ahora */}
+        <div className="absolute top-2 h-5 w-5 -translate-x-1/2 rounded-full border-[3px] border-white shadow" style={{ left: pos(now), background: better === 'down' ? CORAL : BLUE }} />
+      </div>
+      <div className="flex justify-between text-[11px] text-mute">
+        <span>inicio {fmt(start, decimals)}</span>
+        <span>hoy <b className="text-ink">{fmt(now, decimals)}</b> · {Math.round(pct * 100)}% del camino</span>
+        <span>ideal {fmt(ideal, decimals)}</span>
+      </div>
+      {note && <div className="mt-0.5 text-[11px] text-mute">{note}</div>}
+    </div>
+  )
+}

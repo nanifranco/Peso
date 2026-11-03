@@ -135,6 +135,16 @@ export function computeAchievements(state: State): Achievement[] {
     }
   }
   void dPct
+  if (p.goalFatPct && l?.fatPct != null) {
+    const done = l.fatPct <= p.goalFatPct
+    const from = f.fatPct ?? l.fatPct
+    out.push({ id: `ideal-grasa-${p.goalFatPct}`, kind: 'cuerpo', emoji: '🎯', title: `Grasa ideal: ${fmt(p.goalFatPct, 0)}%`, body: 'Llegaste al % de grasa que te pusiste como ideal. Esto es composición corporal de verdad, no solo báscula.', unlocked: done, progress: from > p.goalFatPct ? Math.max(0, Math.min(1, (from - l.fatPct) / (from - p.goalFatPct))) : done ? 1 : 0, remaining: done ? undefined : `vas en ${fmt(l.fatPct)}%`, big: true })
+  }
+  if (p.goalMuscleKg && l?.muscleKg != null) {
+    const done = l.muscleKg >= p.goalMuscleKg
+    const from = f.muscleKg ?? l.muscleKg
+    out.push({ id: `ideal-musculo-${p.goalMuscleKg}`, kind: 'cuerpo', emoji: '💪', title: `Músculo ideal: ${fmt(p.goalMuscleKg)} kg`, body: 'Llegaste al músculo que te pusiste como ideal. Más músculo = más fuerza y un metabolismo que trabaja a tu favor.', unlocked: done, progress: p.goalMuscleKg > from ? Math.max(0, Math.min(1, (l.muscleKg - from) / (p.goalMuscleKg - from))) : done ? 1 : 0, remaining: done ? undefined : `te faltan ${fmt(p.goalMuscleKg - l.muscleKg)} kg`, big: true })
+  }
 
   // --- Constancia ---
   const ws = sortByDate(state.weighIns)

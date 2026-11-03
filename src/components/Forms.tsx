@@ -137,7 +137,7 @@ export function ProfileForm({ initial, initialStart, onSave, withWeight, cta }: 
     <form
       onSubmit={(e) => {
         e.preventDefault()
-        if (ok) onSave({ profile: { name: 'Nani', sex: 'm', heightCm: num(h)!, goalKg: num(goal) }, startKg: num(start), startDate, todayKg: num(kg) })
+        if (ok) onSave({ profile: { ...initial, name: 'Nani', sex: 'm', heightCm: num(h)!, goalKg: num(goal) }, startKg: num(start), startDate, todayKg: num(kg) })
       }}
       className="space-y-4"
     >
