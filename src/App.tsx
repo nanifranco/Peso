@@ -12,7 +12,8 @@ type Tab = 'inicio' | 'logros' | 'historial' | 'ajustes'
 type SheetKind = null | 'peso' | 'inbody' | 'evento' | 'menu'
 
 export default function App() {
-  const [state, setState] = useState<State>(loadState)
+  // Al abrir, los logros que ya cumples se marcan sin festejo (no repite cosas viejas)
+  const [state, setState] = useState<State>(() => syncUnlocked(loadState()).state)
   const [tab, setTab] = useState<Tab>('inicio')
   const [sheet, setSheet] = useState<SheetKind>(null)
   const [queue, setQueue] = useState<Achievement[]>([])

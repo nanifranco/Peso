@@ -4,14 +4,45 @@ const KEY = 'peso:v1'
 
 export const emptyState = (): State => ({ weighIns: [], inbodies: [], events: [], unlocked: {} })
 
+/**
+ * Historial personal opcional (src/seed.local.json, fuera de git porque el repo es público).
+ * Si existe en el build, se mezcla una sola vez con lo que haya en el teléfono:
+ * solo agrega los registros cuyas fechas no estén ya.
+ */
+const seedFiles = import.meta.glob<{ default: State }>('../seed.local.json', { eager: true })
+const SEED: State | undefined = Object.values(seedFiles)[0]?.default
+const SEED_FLAG = 'peso:seed-v1'
+
+function mergeSeed(s: State): State {
+  if (!SEED) return s
+  try {
+    if (localStorage.getItem(SEED_FLAG)) return s
+    localStorage.setItem(SEED_FLAG, '1')
+  } catch { /* sin storage: se mezcla en memoria */ }
+  const wDates = new Set(s.weighIns.map((w) => w.date))
+  const iDates = new Set(s.inbodies.map((i) => i.date))
+  // si ya existe un registro de inicio propio, el del historial no lo pisa
+  // El historial es el registro real: si trae un inicio más antiguo que el que pusiste a mano, ese manda
+  const mine = s.weighIns.find((w) => w.id === START_ID)
+  const seedStart = SEED.weighIns.find((w) => w.id === START_ID)
+  const base = mine && seedStart && seedStart.date < mine.date ? s.weighIns.filter((w) => w.id !== START_ID) : s.weighIns
+  const hasStart = base.some((w) => w.id === START_ID)
+  const weighIns = [
+    ...base,
+    ...SEED.weighIns.filter((w) => !wDates.has(w.date)).map((w) => (w.id === START_ID && hasStart ? { ...w, id: uid() } : w)),
+  ]
+  const inbodies = [...s.inbodies, ...SEED.inbodies.filter((i) => !iDates.has(i.date))]
+  const profile = s.profile ?? SEED.profile
+  return normalize({ ...s, profile, weighIns, inbodies })
+}
+
 export function loadState(): State {
+  let s = emptyState()
   try {
     const raw = localStorage.getItem(KEY)
-    if (!raw) return emptyState()
-    return normalize({ ...emptyState(), ...JSON.parse(raw) })
-  } catch {
-    return emptyState()
-  }
+    if (raw) s = normalize({ ...emptyState(), ...JSON.parse(raw) })
+  } catch { /* datos dañados: empezamos vacío */ }
+  return mergeSeed(s)
 }
 
 export function saveState(s: State) {
