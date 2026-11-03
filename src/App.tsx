@@ -6,9 +6,9 @@ import { START_ID, addDays, emptyState, loadState, normalize, saveState, todayIS
 import { sortByDate } from './lib/calc'
 import { Celebration, Sheet, Toast } from './components/ui'
 import { EventForm, InBodyForm, ProfileForm, WeighInForm } from './components/Forms'
-import { Historial, Home, Logros } from './Screens'
+import { Historial, Home, Logros, Registros } from './Screens'
 
-type Tab = 'inicio' | 'logros' | 'historial' | 'ajustes'
+type Tab = 'inicio' | 'logros' | 'historial' | 'registros' | 'ajustes'
 type SheetKind = null | 'peso' | 'inbody' | 'evento' | 'menu'
 
 export default function App() {
@@ -92,13 +92,12 @@ export default function App() {
           />
         )}
         {tab === 'logros' && <Logros state={state} />}
-        {tab === 'historial' && (
-          <Historial
+        {tab === 'historial' && <Historial state={state} sum={s} onOpenSettings={() => setTab('ajustes')} />}
+        {tab === 'registros' && (
+          <Registros
             state={state}
-            sum={s}
             onDeleteWeighIn={(id) => state.weighIns.length > 1 && setState({ ...state, weighIns: state.weighIns.filter((w) => w.id !== id) })}
             onDeleteInBody={(id) => setState({ ...state, inbodies: state.inbodies.filter((i) => i.id !== id) })}
-            onOpenSettings={() => setTab('ajustes')}
           />
         )}
         {tab === 'ajustes' && <Ajustes state={state} onChange={(n) => commit(n, undefined, true)} onReset={() => { setState(emptyState()); setTab('inicio') }} />}
@@ -106,14 +105,15 @@ export default function App() {
 
       {/* Barra inferior */}
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-4">
-        <div className="flex items-center gap-2 rounded-[28px] border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur">
+        <div className="flex items-center gap-1 rounded-[28px] border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur">
           {([
             ['inicio', '🏠', 'Inicio'],
-            ['logros', '🏆', 'Logros'],
             ['historial', '📊', 'Gráficas'],
+            ['registros', '📋', 'Registros'],
+            ['logros', '🏆', 'Logros'],
             ['ajustes', '⚙️', 'Ajustes'],
           ] as [Tab, string, string][]).map(([t, ic, l]) => (
-            <button key={t} onClick={() => setTab(t)} className={`flex flex-1 flex-col items-center rounded-3xl py-1.5 text-[11px] font-semibold transition ${tab === t ? 'bg-cream text-ink' : 'text-mute'}`}>
+            <button key={t} onClick={() => setTab(t)} className={`flex min-w-0 flex-1 flex-col items-center rounded-3xl py-1.5 text-[10.5px] font-semibold transition ${tab === t ? 'bg-cream text-ink' : 'text-mute'}`}>
               <span className={`text-lg ${tab === t ? '' : 'grayscale opacity-70'}`}>{ic}</span>
               {l}
             </button>

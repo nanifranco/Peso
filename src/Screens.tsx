@@ -217,13 +217,7 @@ export function Logros({ state }: { state: State }) {
   )
 }
 
-export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody, onOpenSettings }: { state: State; sum: Summary; onDeleteWeighIn: (id: string) => void; onDeleteInBody: (id: string) => void; onOpenSettings: () => void }) {
-  const [armed, setArmed] = useState<string | null>(null)
-  const rows = [
-    ...state.weighIns.map((w) => ({ t: 'w' as const, id: w.id, date: w.date, w })),
-    ...state.inbodies.map((i) => ({ t: 'i' as const, id: i.id, date: i.date, i })),
-  ].sort((a, b) => b.date.localeCompare(a.date))
-  const trendByDate = Object.fromEntries(sum.ws.map((x) => [x.date, x.trend]))
+export function Historial({ state, sum, onOpenSettings }: { state: State; sum: Summary; onOpenSettings: () => void }) {
   return (
     <div className="space-y-4">
       <header className="px-1">
@@ -248,32 +242,87 @@ export function Historial({ state, sum, onDeleteWeighIn, onDeleteInBody, onOpenS
         <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
       </section>
       <BodySection state={state} sum={sum} onOpenSettings={onOpenSettings} />
-      <h2 className="px-1 pt-2 font-display text-lg font-bold">Registros</h2>
-      <section className="card divide-y divide-line overflow-hidden">
-        {rows.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 px-4 py-3">
-            <div className="w-14 shrink-0 text-xs text-mute">{new Date(r.date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}<br />{r.date.slice(0, 4)}</div>
-            {r.t === 'w' ? (
-              <div className="flex-1">
-                <div className="font-display text-lg font-bold">{fmt(r.w.kg)} kg <span className="text-xs font-normal text-mute">tendencia {fmt(trendByDate[r.date] ?? r.w.kg)}</span></div>
-                {r.w.note && <div className="text-sm text-ink/70">📝 {r.w.note}</div>}
-              </div>
-            ) : (
-              <div className="flex-1">
-                <div className="font-semibold text-sky">🔬 InBody</div>
-                <div className="text-xs text-ink/70">
-                  {[r.i.kg && `${fmt(r.i.kg)} kg`, r.i.fatPct && `${fmt(r.i.fatPct)}% grasa`, r.i.muscleKg && `${fmt(r.i.muscleKg)} kg músculo`, r.i.visceral && `visceral ${r.i.visceral}`].filter(Boolean).join(' · ')}
-                </div>
-              </div>
-            )}
-            {armed === r.id ? (
-              <button onClick={() => { (r.t === 'w' ? onDeleteWeighIn : onDeleteInBody)(r.id); setArmed(null) }} className="rounded-full bg-coral px-3 py-1 text-xs font-bold text-white">Borrar</button>
-            ) : (
-              <button onClick={() => setArmed(r.id)} className="px-2 text-lg text-mute" aria-label="Opciones">×</button>
-            )}
-          </div>
+    </div>
+  )
+}
+
+const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+export function Registros({ state, onDeleteWeighIn, onDeleteInBody }: { state: State; onDeleteWeighIn: (id: string) => void; onDeleteInBody: (id: string) => void }) {
+  const [armed, setArmed] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'todo' | 'peso' | 'inbody'>('todo')
+  // cambio contra el registro de peso anterior
+  const ws = sortByDate(state.weighIns)
+  const deltaById: Record<string, number | undefined> = {}
+  ws.forEach((w, i) => { deltaById[w.id] = i ? w.kg - ws[i - 1].kg : undefined })
+  const rows = [
+    ...(filter !== 'inbody' ? state.weighIns.map((w) => ({ t: 'w' as const, id: w.id, date: w.date, w })) : []),
+    ...(filter !== 'peso' ? state.inbodies.map((i) => ({ t: 'i' as const, id: i.id, date: i.date, i })) : []),
+  ].sort((a, b) => b.date.localeCompare(a.date) || (a.t === 'i' ? -1 : 1))
+  const groups: { key: string; items: typeof rows }[] = []
+  rows.forEach((r) => {
+    const k = r.date.slice(0, 7)
+    if (!groups.length || groups[groups.length - 1].key !== k) groups.push({ key: k, items: [] })
+    groups[groups.length - 1].items.push(r)
+  })
+  const kg = (n: number) => n.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 2 })
+  return (
+    <div className="space-y-4">
+      <header className="px-1">
+        <h1 className="font-display text-3xl font-extrabold">Registros</h1>
+        <p className="text-sm text-mute">{state.weighIns.length} pesos · {state.inbodies.length} InBody</p>
+      </header>
+      <div className="flex gap-2 px-1">
+        {([['todo', 'Todo'], ['peso', '⚖️ Peso'], ['inbody', '🔬 InBody']] as const).map(([k, l]) => (
+          <button key={k} onClick={() => setFilter(k)} className={`rounded-full px-4 py-2 text-sm font-semibold transition ${filter === k ? 'bg-ink text-cream' : 'bg-line/70 text-ink'}`}>{l}</button>
         ))}
-      </section>
+      </div>
+      {groups.length === 0 && <p className="px-1 text-sm text-mute">Nada por aquí todavía.</p>}
+      {groups.map((g) => (
+        <section key={g.key}>
+          <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-mute">{MONTH_NAMES[Number(g.key.slice(5)) - 1]} {g.key.slice(0, 4)}</h2>
+          <div className="card divide-y divide-line overflow-hidden">
+            {g.items.map((r) => {
+              const d = r.t === 'w' ? deltaById[r.id] : undefined
+              return (
+                <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-10 shrink-0 text-center leading-tight">
+                    <div className="font-display text-xl font-extrabold">{Number(r.date.slice(8))}</div>
+                    <div className="text-[10px] uppercase text-mute">{new Date(r.date + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', '')}</div>
+                  </div>
+                  {r.t === 'w' ? (
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-display text-lg font-bold">{kg(r.w.kg)} kg</span>
+                        {d !== undefined && Math.abs(d) >= 0.05 && (
+                          <span className={`text-xs font-bold ${d < 0 ? 'text-leaf' : 'text-mute'}`}>{d < 0 ? '▼' : '▲'} {kg(Math.abs(d))}</span>
+                        )}
+                        {r.w.id === 'start' && <span className="rounded-full bg-sun/40 px-2 py-0.5 text-[10px] font-bold">inicio</span>}
+                      </div>
+                      {r.w.note && r.w.id !== 'start' && <div className="truncate text-sm text-ink/70">📝 {r.w.note}</div>}
+                    </div>
+                  ) : (
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sky">🔬 InBody</div>
+                      <div className="text-xs text-ink/70">
+                        {[r.i.kg && `${fmt(r.i.kg)} kg`, r.i.fatPct && `${fmt(r.i.fatPct)}% grasa`, r.i.muscleKg && `${fmt(r.i.muscleKg)} kg músculo`, r.i.visceral && `visceral ${r.i.visceral}`].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
+                  )}
+                  {armed === r.id ? (
+                    <div className="flex gap-1">
+                      <button onClick={() => setArmed(null)} className="rounded-full bg-line px-3 py-1 text-xs font-bold">No</button>
+                      <button onClick={() => { (r.t === 'w' ? onDeleteWeighIn : onDeleteInBody)(r.id); setArmed(null) }} className="rounded-full bg-coral px-3 py-1 text-xs font-bold text-white">Borrar</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setArmed(r.id)} className="px-2 text-lg text-mute" aria-label="Borrar registro">×</button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   )
 }
