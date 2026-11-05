@@ -7,7 +7,7 @@ const SEGS: [number, number, string][] = [
   [25, 30, '#EDB54A'],
   [30, 35, '#E8793A'],
   [35, 40, '#D65A4A'],
-  [40, 42, '#B4506E'],
+  [40, 42, '#A8432F'],
 ]
 
 const pt = (v: number, r: number) => {

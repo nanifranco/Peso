@@ -226,7 +226,6 @@ body::before {
 .tone-mint { --tc: #2b8566; --tint: #d8f1e6; --glow: rgba(43, 133, 102, 0.5); }
 .tone-ember { --tc: #c45d22; --tint: #fde1cf; --glow: rgba(232, 121, 58, 0.55); }
 .tone-sun { --tc: #a8721a; --tint: #fbecc9; --glow: rgba(214, 160, 60, 0.55); }
-.tone-rose { --tc: #b04a69; --tint: #f8dce5; --glow: rgba(180, 80, 110, 0.5); }
 .tone-sky { --tc: #2c7581; --tint: #d6ebef; --glow: rgba(44, 117, 129, 0.5); }
 .tone-mute { --tc: #8aa29b; --tint: #e8efec; --glow: rgba(18, 48, 44, 0.25); }
 .tone-dark {

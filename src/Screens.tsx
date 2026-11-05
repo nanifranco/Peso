@@ -80,7 +80,7 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenChart
         </div>
         {lastEq && lost > 0.5 && (
           <div className="tile mt-3 flex items-center gap-3 px-2.5 py-2 text-[13px] text-ink/75">
-            <Badge icon={lastEq.icon} tone="sun" size={36} />
+            <Badge icon={lastEq.icon} tone="teal" size={36} />
             <span>Ya no cargas <b className="text-ink">{lastEq.title.split(': ')[1]}</b></span>
           </div>
         )}
@@ -460,7 +460,7 @@ function BodySection({ state, sum, onOpenSettings }: { state: State; sum: Summar
         <section className="card p-4">
           <h2 className="font-display text-lg font-bold">Grasa visceral</h2>
           <p className="text-xs text-mute">La que rodea tus órganos. En InBody, menos de 10 es el rango sano.</p>
-          <MetricChart points={series('visceral')} color="#B4506E" unit="nivel" healthyBelow={10} better="down" decimals={0} />
+          <MetricChart points={series('visceral')} color="#3C8F99" unit="nivel" healthyBelow={10} better="down" decimals={0} />
         </section>
       )}
       {series('bmr').length > 0 && (

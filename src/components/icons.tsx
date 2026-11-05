@@ -65,7 +65,7 @@ export function Icon({ name, size = 20, stroke = 1.8, className }: { name: strin
 }
 
 /** Tonos de las burbujas: fondo con brillo + color del trazo */
-export type Tone = 'teal' | 'mint' | 'ember' | 'sun' | 'rose' | 'sky' | 'mute' | 'dark'
+export type Tone = 'teal' | 'mint' | 'ember' | 'sun' | 'sky' | 'mute' | 'dark'
 
 /** Burbuja de vidrio con un ícono adentro (reemplaza los emojis en tarjetas) */
 export function Badge({ icon, tone = 'teal', size = 52, iconSize, className = '' }: { icon: string; tone?: Tone; size?: number; iconSize?: number; className?: string }) {
@@ -76,11 +76,11 @@ export function Badge({ icon, tone = 'teal', size = 52, iconSize, className = ''
   )
 }
 
-/** Tono de cada tipo de logro */
+/** Todos los logros usan el mismo tono (verde petróleo) */
 export const KIND_TONE: Record<string, Tone> = {
-  salud: 'rose',
-  cuerpo: 'sky',
+  salud: 'teal',
+  cuerpo: 'teal',
   meta: 'teal',
-  equivalencia: 'sun',
-  constancia: 'mint',
+  equivalencia: 'teal',
+  constancia: 'teal',
 }

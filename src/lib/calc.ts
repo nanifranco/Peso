@@ -58,7 +58,7 @@ export function bmiCategory(b: number) {
   if (b < 30) return { label: 'Sobrepeso', color: '#EDB54A' }
   if (b < 35) return { label: 'Obesidad I', color: '#E8793A' }
   if (b < 40) return { label: 'Obesidad II', color: '#D65A4A' }
-  return { label: 'Obesidad III', color: '#B4506E' }
+  return { label: 'Obesidad III', color: '#A8432F' }
 }
 
 /** Todo lo que la app necesita saber de un vistazo */
