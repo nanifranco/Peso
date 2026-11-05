@@ -2,18 +2,18 @@ import type { Achievement, State } from './types'
 import { daysBetween, fmt, sortByDate, summary } from './calc'
 
 const EQUIV: [number, string, string][] = [
-  [1, '🍚', 'un paquete de arroz'],
-  [2, '🍍', 'una piña grande'],
-  [4, '🐈', 'un gato'],
-  [5, '🍉', 'una sandía'],
-  [7, '🎳', 'una bola de boliche'],
-  [10, '🛞', 'una llanta de coche'],
-  [12, '🐕', 'un beagle'],
-  [15, '🎒', 'una mochila de viaje llena'],
-  [20, '💧', 'un garrafón de agua lleno'],
-  [23, '🧳', 'una maleta documentada al límite'],
-  [30, '🐕‍🦺', 'un pastor alemán'],
-  [50, '🧱', 'un bulto de cemento'],
+  [1, 'sack', 'un paquete de arroz'],
+  [2, 'pineapple', 'una piña grande'],
+  [4, 'cat', 'un gato'],
+  [5, 'watermelon', 'una sandía'],
+  [7, 'bowling', 'una bola de boliche'],
+  [10, 'tire', 'una llanta de coche'],
+  [12, 'dog', 'un beagle'],
+  [15, 'backpack', 'una mochila de viaje llena'],
+  [20, 'drop', 'un garrafón de agua lleno'],
+  [23, 'suitcase', 'una maleta documentada al límite'],
+  [30, 'dog', 'un pastor alemán'],
+  [50, 'brick', 'un bulto de cemento'],
 ]
 
 /**
@@ -44,7 +44,7 @@ export function computeAchievements(state: State): Achievement[] {
     [25, 'imc25', '¡Llegaste a peso saludable!', 'IMC por debajo de 25. Lo que hace un tiempo era la meta lejana, hoy es tu realidad.'],
   ]
   for (const [lim, id, title, body] of bmiSteps) {
-    if (s.startBmi >= lim) byWeight({ id, kind: 'salud', emoji: lim === 25 ? '💚' : '🏅', title, body, big: true }, lim * h2 - 0.05)
+    if (s.startBmi >= lim) byWeight({ id, kind: 'salud', icon: lim === 25 ? 'leaf' : 'medal', title, body, big: true }, lim * h2 - 0.05)
   }
 
   // --- Salud: % de peso perdido ---
@@ -57,7 +57,7 @@ export function computeAchievements(state: State): Achievement[] {
     [20, '20% menos', 'Una quinta parte. Esto ya es otra vida.'],
   ]
   for (const [pct, title, body] of pctSteps) {
-    byWeight({ id: `pct${pct}`, kind: 'salud', emoji: pct >= 10 ? '❤️' : '📉', title, body, big: pct === 5 || pct === 10 }, startKg * (1 - pct / 100))
+    byWeight({ id: `pct${pct}`, kind: 'salud', icon: pct >= 10 ? 'heart' : 'trendDown', title, body, big: pct === 5 || pct === 10 }, startKg * (1 - pct / 100))
   }
 
   // --- Mini-metas hacia la meta final ---
@@ -70,7 +70,7 @@ export function computeAchievements(state: State): Achievement[] {
         {
           id: `meta${i}-${p.goalKg}`,
           kind: 'meta',
-          emoji: last ? '🏆' : '🎯',
+          icon: last ? 'trophy' : 'target',
           title: last ? '¡META CUMPLIDA!' : `Escalón ${i} de ${steps}`,
           body: last ? `Llegaste a ${fmt(p.goalKg)} kg. Lo dijiste, lo hiciste.` : `Llegaste a ${fmt(t)} kg. ${steps - i} escalones más y llegas.`,
           big: last,
@@ -81,19 +81,19 @@ export function computeAchievements(state: State): Achievement[] {
   }
 
   // --- Equivalencias ---
-  for (const [kg, emoji, what] of EQUIV) {
+  for (const [kg, icon, what] of EQUIV) {
     if (kg > startKg * 0.45) continue
-    byWeight({ id: `eq${kg}`, kind: 'equivalencia', emoji, title: `${kg} kg: ${what}`, body: `Ya no cargas el peso de ${what}. Imagina subir escaleras con eso en la espalda… eso ya no está.` }, startKg - kg)
+    byWeight({ id: `eq${kg}`, kind: 'equivalencia', icon, title: `${kg} kg: ${what}`, body: `Ya no cargas el peso de ${what}. Imagina subir escaleras con eso en la espalda… eso ya no está.` }, startKg - kg)
   }
 
   // --- Cuerpo (InBody) ---
   const ib = sortByDate(state.inbodies)
   if (ib.length) {
-    out.push({ id: 'ib1', kind: 'cuerpo', emoji: '🔬', title: 'Primer InBody', body: 'Ahora sabes qué hay detrás del número: grasa, músculo y agua. Desde aquí lo medimos de verdad.', unlocked: true })
+    out.push({ id: 'ib1', kind: 'cuerpo', icon: 'composition', title: 'Primer InBody', body: 'Ahora sabes qué hay detrás del número: grasa, músculo y agua. Desde aquí lo medimos de verdad.', unlocked: true })
   }
   const f = ib[0], l = ib[ib.length - 1]
   if (ib.length >= 2) {
-    out.push({ id: 'ib2', kind: 'cuerpo', emoji: '🔁', title: 'Segundo InBody', body: 'Ya hay con qué comparar. Los logros de cuerpo se desbloquean desde ahora.', unlocked: true })
+    out.push({ id: 'ib2', kind: 'cuerpo', icon: 'refresh', title: 'Segundo InBody', body: 'Ya hay con qué comparar. Los logros de cuerpo se desbloquean desde ahora.', unlocked: true })
   }
   const cmp = (key: 'fatKg' | 'muscleKg' | 'fatPct' | 'visceral') => (ib.length >= 2 && f[key] != null && l[key] != null ? (l[key] as number) - (f[key] as number) : undefined)
   const dFat = cmp('fatKg')
@@ -104,13 +104,13 @@ export function computeAchievements(state: State): Achievement[] {
   if (hasFat) {
     for (const kg of [1, 2, 3, 5, 8, 10, 15]) {
       const done = dFat !== undefined && -dFat >= kg
-      out.push({ id: `fat${kg}`, kind: 'cuerpo', emoji: '🔥', title: `${kg} kg de grasa fuera`, body: `Esto es grasa pura, no agua ni músculo. ${kg} kg de grasa son casi ${Math.round(kg * 7700).toLocaleString('es-MX')} kcal que tu cuerpo quemó.`, unlocked: done, progress: dFat !== undefined ? Math.max(0, Math.min(1, -dFat / kg)) : 0, remaining: done ? undefined : 'en tu próximo InBody' })
+      out.push({ id: `fat${kg}`, kind: 'cuerpo', icon: 'flame', title: `${kg} kg de grasa fuera`, body: `Esto es grasa pura, no agua ni músculo. ${kg} kg de grasa son casi ${Math.round(kg * 7700).toLocaleString('es-MX')} kcal que tu cuerpo quemó.`, unlocked: done, progress: dFat !== undefined ? Math.max(0, Math.min(1, -dFat / kg)) : 0, remaining: done ? undefined : 'en tu próximo InBody' })
     }
   }
   if (f?.muscleKg != null) {
     for (const kg of [0.5, 1, 2, 3]) {
       const done = dMus !== undefined && dMus >= kg
-      out.push({ id: `mus${kg}`, kind: 'cuerpo', emoji: '💪', title: `+${fmt(kg, kg < 1 ? 1 : 0)} kg de músculo`, body: 'Bajar de peso y ganar músculo al mismo tiempo es lo más difícil y lo más valioso. Tu metabolismo te lo agradece.', unlocked: done, progress: dMus !== undefined ? Math.max(0, Math.min(1, dMus / kg)) : 0, remaining: done ? undefined : 'en tu próximo InBody' })
+      out.push({ id: `mus${kg}`, kind: 'cuerpo', icon: 'dumbbell', title: `+${fmt(kg, kg < 1 ? 1 : 0)} kg de músculo`, body: 'Bajar de peso y ganar músculo al mismo tiempo es lo más difícil y lo más valioso. Tu metabolismo te lo agradece.', unlocked: done, progress: dMus !== undefined ? Math.max(0, Math.min(1, dMus / kg)) : 0, remaining: done ? undefined : 'en tu próximo InBody' })
     }
   }
   if (f?.fatPct != null) {
@@ -118,51 +118,51 @@ export function computeAchievements(state: State): Achievement[] {
     for (const lim of lims) {
       if (f.fatPct < lim) continue
       const done = l.fatPct != null && l.fatPct < lim
-      out.push({ id: `pct-grasa${lim}`, kind: 'cuerpo', emoji: '📐', title: `Grasa corporal menor a ${lim}%`, body: `Tu porcentaje de grasa ya bajó de ${lim}%. Este número dice más de tu salud que la báscula.`, unlocked: done, progress: l.fatPct != null ? Math.max(0, Math.min(1, (f.fatPct - l.fatPct) / Math.max(0.1, f.fatPct - lim + 0.1))) : 0, remaining: done ? undefined : `vas en ${fmt(l.fatPct ?? f.fatPct)}%`, big: true })
+      out.push({ id: `pct-grasa${lim}`, kind: 'cuerpo', icon: 'ruler', title: `Grasa corporal menor a ${lim}%`, body: `Tu porcentaje de grasa ya bajó de ${lim}%. Este número dice más de tu salud que la báscula.`, unlocked: done, progress: l.fatPct != null ? Math.max(0, Math.min(1, (f.fatPct - l.fatPct) / Math.max(0.1, f.fatPct - lim + 0.1))) : 0, remaining: done ? undefined : `vas en ${fmt(l.fatPct ?? f.fatPct)}%`, big: true })
     }
   }
   if (f?.visceral != null && f.visceral >= 10) {
     const done = l.visceral != null && l.visceral < 10
-    out.push({ id: 'visceral', kind: 'cuerpo', emoji: '🫀', title: 'Grasa visceral en rango sano', body: 'Bajaste de nivel 10. La grasa visceral es la que rodea tus órganos y la que más se relaciona con el riesgo cardiovascular. Esta es de las mejores noticias posibles.', unlocked: done, remaining: done ? undefined : `vas en nivel ${l.visceral}`, big: true })
+    out.push({ id: 'visceral', kind: 'cuerpo', icon: 'heartPulse', title: 'Grasa visceral en rango sano', body: 'Bajaste de nivel 10. La grasa visceral es la que rodea tus órganos y la que más se relaciona con el riesgo cardiovascular. Esta es de las mejores noticias posibles.', unlocked: done, remaining: done ? undefined : `vas en nivel ${l.visceral}`, big: true })
   }
   if (dVis !== undefined && dVis <= -2) {
-    out.push({ id: 'visceral-2', kind: 'cuerpo', emoji: '🫀', title: 'Visceral −2 niveles', body: 'Tu grasa visceral bajó 2 niveles. Tus órganos tienen más espacio para trabajar.', unlocked: true })
+    out.push({ id: 'visceral-2', kind: 'cuerpo', icon: 'heartPulse', title: 'Visceral −2 niveles', body: 'Tu grasa visceral bajó 2 niveles. Tus órganos tienen más espacio para trabajar.', unlocked: true })
   }
   if (dFat !== undefined && ib.length >= 2 && f.kg != null && l.kg != null) {
     const dW = l.kg - f.kg
     if (-dFat >= 1 && -dFat > -dW + 0.8) {
-      out.push({ id: 'recomp', kind: 'cuerpo', emoji: '🪄', title: 'Recomposición corporal', body: `Bajaste ${fmt(-dFat)} kg de grasa aunque la báscula solo marcó ${fmt(-dW)} kg. Estás cambiando lo que hay dentro, no solo el número.`, unlocked: true, big: true })
+      out.push({ id: 'recomp', kind: 'cuerpo', icon: 'wand', title: 'Recomposición corporal', body: `Bajaste ${fmt(-dFat)} kg de grasa aunque la báscula solo marcó ${fmt(-dW)} kg. Estás cambiando lo que hay dentro, no solo el número.`, unlocked: true, big: true })
     }
   }
   void dPct
   if (p.goalFatPct && l?.fatPct != null) {
     const done = l.fatPct <= p.goalFatPct
     const from = f.fatPct ?? l.fatPct
-    out.push({ id: `ideal-grasa-${p.goalFatPct}`, kind: 'cuerpo', emoji: '🎯', title: `Grasa ideal: ${fmt(p.goalFatPct, 0)}%`, body: 'Llegaste al % de grasa que te pusiste como ideal. Esto es composición corporal de verdad, no solo báscula.', unlocked: done, progress: from > p.goalFatPct ? Math.max(0, Math.min(1, (from - l.fatPct) / (from - p.goalFatPct))) : done ? 1 : 0, remaining: done ? undefined : `vas en ${fmt(l.fatPct)}%`, big: true })
+    out.push({ id: `ideal-grasa-${p.goalFatPct}`, kind: 'cuerpo', icon: 'target', title: `Grasa ideal: ${fmt(p.goalFatPct, 0)}%`, body: 'Llegaste al % de grasa que te pusiste como ideal. Esto es composición corporal de verdad, no solo báscula.', unlocked: done, progress: from > p.goalFatPct ? Math.max(0, Math.min(1, (from - l.fatPct) / (from - p.goalFatPct))) : done ? 1 : 0, remaining: done ? undefined : `vas en ${fmt(l.fatPct)}%`, big: true })
   }
   if (p.goalMuscleKg && l?.muscleKg != null) {
     const done = l.muscleKg >= p.goalMuscleKg
     const from = f.muscleKg ?? l.muscleKg
-    out.push({ id: `ideal-musculo-${p.goalMuscleKg}`, kind: 'cuerpo', emoji: '💪', title: `Músculo ideal: ${fmt(p.goalMuscleKg)} kg`, body: 'Llegaste al músculo que te pusiste como ideal. Más músculo = más fuerza y un metabolismo que trabaja a tu favor.', unlocked: done, progress: p.goalMuscleKg > from ? Math.max(0, Math.min(1, (l.muscleKg - from) / (p.goalMuscleKg - from))) : done ? 1 : 0, remaining: done ? undefined : `te faltan ${fmt(p.goalMuscleKg - l.muscleKg)} kg`, big: true })
+    out.push({ id: `ideal-musculo-${p.goalMuscleKg}`, kind: 'cuerpo', icon: 'dumbbell', title: `Músculo ideal: ${fmt(p.goalMuscleKg)} kg`, body: 'Llegaste al músculo que te pusiste como ideal. Más músculo = más fuerza y un metabolismo que trabaja a tu favor.', unlocked: done, progress: p.goalMuscleKg > from ? Math.max(0, Math.min(1, (l.muscleKg - from) / (p.goalMuscleKg - from))) : done ? 1 : 0, remaining: done ? undefined : `te faltan ${fmt(p.goalMuscleKg - l.muscleKg)} kg`, big: true })
   }
 
   // --- Constancia ---
   const ws = sortByDate(state.weighIns)
   const span = daysBetween(ws[0].date, ws[ws.length - 1].date)
-  out.push({ id: 'start', kind: 'constancia', emoji: '🌱', title: 'Día uno', body: 'Anotaste tu punto de partida. Todo empieza aquí.', unlocked: true })
+  out.push({ id: 'start', kind: 'constancia', icon: 'sprout', title: 'Día uno', body: 'Anotaste tu punto de partida. Todo empieza aquí.', unlocked: true })
   for (const [d, t] of [[30, '1 mes'], [90, '3 meses'], [180, 'Medio año'], [365, '1 año']] as [number, string][]) {
     const done = span >= d
-    out.push({ id: `span${d}`, kind: 'constancia', emoji: '📆', title: `${t} en esto`, body: `Llevas ${t.toLowerCase()} cuidándote. La constancia le gana a la intensidad.`, unlocked: done, progress: Math.min(1, span / d), remaining: done ? undefined : `faltan ${d - span} días` })
+    out.push({ id: `span${d}`, kind: 'constancia', icon: 'calendar', title: `${t} en esto`, body: `Llevas ${t.toLowerCase()} cuidándote. La constancia le gana a la intensidad.`, unlocked: done, progress: Math.min(1, span / d), remaining: done ? undefined : `faltan ${d - span} días` })
   }
   for (const n of [5, 15, 30, 60]) {
     const done = ws.length >= n
-    out.push({ id: `n${n}`, kind: 'constancia', emoji: '✍️', title: `${n} registros`, body: `Has anotado ${n} veces. Sin obsesionarte, pero sin soltarlo.`, unlocked: done, progress: Math.min(1, ws.length / n), remaining: done ? undefined : `faltan ${n - ws.length}` })
+    out.push({ id: `n${n}`, kind: 'constancia', icon: 'pencil', title: `${n} registros`, body: `Has anotado ${n} veces. Sin obsesionarte, pero sin soltarlo.`, unlocked: done, progress: Math.min(1, ws.length / n), remaining: done ? undefined : `faltan ${n - ws.length}` })
   }
   let comeback = false
   for (let i = 1; i < ws.length; i++) if (daysBetween(ws[i - 1].date, ws[i].date) >= 21) comeback = true
-  if (comeback) out.push({ id: 'comeback', kind: 'constancia', emoji: '🔄', title: 'El regreso', body: 'Pasaron semanas y volviste. Eso es lo que separa a quien lo logra de quien no: regresar.', unlocked: true })
+  if (comeback) out.push({ id: 'comeback', kind: 'constancia', icon: 'refresh', title: 'El regreso', body: 'Pasaron semanas y volviste. Eso es lo que separa a quien lo logra de quien no: regresar.', unlocked: true })
   const lows = ws.reduce((acc, w, i) => (i === 0 || w.kg < Math.min(...ws.slice(0, i).map((x) => x.kg)) ? acc + 1 : acc), 0) - 1
-  if (lows >= 5) out.push({ id: 'lows5', kind: 'constancia', emoji: '⬇️', title: '5 nuevos mínimos', body: 'Cinco veces rompiste tu propio récord.', unlocked: true })
+  if (lows >= 5) out.push({ id: 'lows5', kind: 'constancia', icon: 'arrowDown', title: '5 nuevos mínimos', body: 'Cinco veces rompiste tu propio récord.', unlocked: true })
 
   return out
 }
