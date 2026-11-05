@@ -82,6 +82,19 @@ body::before {
 @utility field {
   @apply w-full rounded-2xl border border-white/90 bg-white/70 px-4 py-3 text-lg outline-none focus:border-coral;
 }
+/* iOS: los campos de fecha ignoran el ancho de su columna; así no se salen */
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 3.25rem;
+}
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}
+
 @utility label {
   @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-mute;
 }
