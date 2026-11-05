@@ -1,47 +1,86 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-cream: #fbf5ec;
-  --color-paper: #fffdf8;
-  --color-ink: #2a1f1a;
-  --color-mute: #8a7d72;
-  --color-line: #eee3d3;
-  --color-coral: #ff6b4a;
-  --color-coral-dark: #e2512f;
-  --color-sun: #ffd166;
-  --color-leaf: #2fb37a;
-  --color-sky: #5b8def;
-  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  /* Salvia + vidrio esmerilado */
+  --color-cream: #e9f0ed;
+  --color-paper: #f6faf8;
+  --color-ink: #12302c;
+  --color-mute: #6b837d;
+  --color-line: #d3e1dc;
+  --color-coral: #14524b; /* acento principal: verde petróleo */
+  --color-coral-dark: #0c3a35;
+  --color-ember: #e8793a; /* naranja de acento / borrar */
+  --color-sun: #f2bd76;
+  --color-leaf: #2f9a74;
+  --color-sky: #3c8f99;
+  --font-display: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 html,
 body {
-  background: var(--color-cream);
+  background: #dfe9e5;
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
 
-.card {
-  background: var(--color-paper);
-  border: 1px solid var(--color-line);
-  border-radius: 24px;
-  box-shadow: 0 1px 0 rgba(42, 31, 26, 0.04), 0 8px 24px -16px rgba(42, 31, 26, 0.25);
+/* Fondo fijo: degradado salvia con brillos suaves (fixed no funciona en iOS, por eso va en un pseudo) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(110% 55% at 0% 0%, rgba(255, 255, 255, 0.95), transparent 60%),
+    radial-gradient(80% 45% at 100% 35%, rgba(255, 255, 255, 0.45), transparent 70%),
+    radial-gradient(90% 60% at 20% 110%, rgba(47, 102, 92, 0.55), transparent 70%),
+    linear-gradient(180deg, #edf3f0 0%, #d2e1db 45%, #9fbdb4 100%);
+}
+
+/* Títulos más suaves, como en la referencia */
+.font-display { letter-spacing: -0.015em; }
+.font-display.font-extrabold { font-weight: 650; }
+.font-display.font-bold { font-weight: 600; }
+
+/* Tarjeta de vidrio */
+.card,
+.glass {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.42));
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 28px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 14px 34px -22px rgba(18, 48, 44, 0.55);
+}
+
+/* Celda interior (dentro de una tarjeta) */
+@utility tile {
+  @apply rounded-[20px] border border-white/80 bg-white/55;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Burbuja redonda para íconos */
+@utility bubble {
+  @apply grid shrink-0 place-items-center rounded-full border border-white/90 bg-white/70;
+  box-shadow: 0 6px 16px -10px rgba(18, 48, 44, 0.5);
 }
 
 @utility btn {
-  @apply rounded-2xl px-5 py-3.5 font-semibold transition active:scale-[0.97];
+  @apply rounded-full px-5 py-3.5 font-semibold transition active:scale-[0.97];
 }
 @utility btn-primary {
-  @apply btn bg-ink text-cream;
+  @apply btn bg-ink text-white;
+  box-shadow: 0 10px 24px -12px rgba(18, 48, 44, 0.8);
 }
 @utility btn-ghost {
-  @apply btn bg-line/60 text-ink;
+  @apply btn border border-white/80 bg-white/60 text-ink;
 }
 @utility field {
-  @apply w-full rounded-2xl border border-line bg-paper px-4 py-3 text-lg outline-none focus:border-coral;
+  @apply w-full rounded-2xl border border-white/90 bg-white/70 px-4 py-3 text-lg outline-none focus:border-coral;
 }
 @utility label {
   @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-mute;
@@ -107,10 +146,23 @@ body {
 
 .hero {
   background:
-    radial-gradient(120% 80% at 100% 0%, rgba(255, 209, 102, 0.55), transparent 60%),
-    radial-gradient(90% 70% at 0% 100%, rgba(255, 107, 74, 0.18), transparent 60%),
-    #fff6ea;
-  border: 1px solid var(--color-line);
+    radial-gradient(90% 70% at 100% 0%, rgba(111, 184, 169, 0.45), transparent 65%),
+    radial-gradient(80% 60% at 0% 100%, rgba(20, 82, 75, 0.18), transparent 65%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.88), rgba(232, 242, 238, 0.55));
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 18px 40px -24px rgba(18, 48, 44, 0.6);
+}
+
+/* Hojas inferiores */
+.sheet-glass {
+  background: linear-gradient(180deg, rgba(246, 250, 248, 0.94), rgba(225, 236, 231, 0.94));
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(255, 255, 255, 0.9);
 }
 
 /* Personajita: parpadeo y coletas que se mecen */

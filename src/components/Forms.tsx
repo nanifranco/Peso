@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { InBody, PlannedEvent, Profile, WeighIn } from '../lib/types'
+import type { InBody, Profile, WeighIn } from '../lib/types'
 import { addDays, todayISO, uid } from '../lib/store'
 
 const num = (s: string) => {
@@ -22,12 +22,12 @@ export function WeighInForm({ last, onSave }: { last?: number; onSave: (w: Weigh
       className="space-y-4 pb-4"
     >
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => bump(-0.1)} className="h-14 w-14 shrink-0 rounded-2xl bg-line/70 text-2xl font-bold">−</button>
+        <button type="button" onClick={() => bump(-0.1)} className="bubble h-14 w-14 text-2xl font-bold">−</button>
         <div className="relative flex-1">
           <input autoFocus inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="0.0" className="field text-center font-display text-5xl! font-extrabold py-4!" />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-mute">kg</span>
         </div>
-        <button type="button" onClick={() => bump(0.1)} className="h-14 w-14 shrink-0 rounded-2xl bg-line/70 text-2xl font-bold">+</button>
+        <button type="button" onClick={() => bump(0.1)} className="bubble h-14 w-14 text-2xl font-bold">+</button>
       </div>
       <div>
         <label className="label">Fecha</label>
@@ -71,7 +71,7 @@ export function InBodyForm({ onSave }: { onSave: (ib: InBody) => void }) {
       }}
       className="space-y-4 pb-4"
     >
-      <p className="rounded-2xl bg-sky/10 p-3 text-sm text-ink/80">
+      <p className="tile p-3 text-sm text-ink/80">
         📄 Copia los números de tu hoja de InBody. Llena solo los que tengas; con <b>peso</b> y <b>% de grasa</b> ya se desbloquean muchos logros.
       </p>
       <div>
@@ -91,24 +91,6 @@ export function InBodyForm({ onSave }: { onSave: (ib: InBody) => void }) {
         ))}
       </div>
       <button disabled={filled === 0} className="btn-primary w-full text-lg disabled:opacity-40">Guardar InBody</button>
-    </form>
-  )
-}
-
-export function EventForm({ onSave }: { onSave: (e: PlannedEvent) => void }) {
-  const [name, setName] = useState('')
-  const [date, setDate] = useState('')
-  return (
-    <form onSubmit={(e) => { e.preventDefault(); if (name && date) onSave({ id: uid(), name, date }) }} className="space-y-4 pb-4">
-      <div>
-        <label className="label">¿Qué viene?</label>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Viaje, boda, regreso a México…" className="field" />
-      </div>
-      <div>
-        <label className="label">Fecha</label>
-        <input type="date" min={todayISO()} value={date} onChange={(e) => setDate(e.target.value)} className="field" />
-      </div>
-      <button disabled={!name || !date} className="btn-primary w-full text-lg disabled:opacity-40">Agregar</button>
     </form>
   )
 }
@@ -168,7 +150,7 @@ export function ProfileForm({ initial, initialStart, onSave, withWeight, cta }: 
         </div>
       </div>
       {!withWeight && (
-        <div className="space-y-2 border-t border-line pt-4">
+        <div className="space-y-2 border-t border-white/80 pt-4">
           <div>
             <div className="font-display text-lg font-bold">Tus ideales de cuerpo</div>
             <p className="text-xs text-mute">Tu hoja de InBody trae el rango normal de grasa y músculo para ti; úsalo como guía. Se ven en Gráficas.</p>

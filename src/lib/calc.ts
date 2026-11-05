@@ -53,12 +53,12 @@ export function weeklyRate(w: WeighIn[]): number | undefined {
 export const bmi = (kg: number, heightCm: number) => kg / (heightCm / 100) ** 2
 
 export function bmiCategory(b: number) {
-  if (b < 18.5) return { label: 'Bajo peso', color: '#9AA5B1' }
-  if (b < 25) return { label: 'Saludable', color: '#2FB37A' }
-  if (b < 30) return { label: 'Sobrepeso', color: '#F5B83D' }
-  if (b < 35) return { label: 'Obesidad I', color: '#FF8A4C' }
-  if (b < 40) return { label: 'Obesidad II', color: '#F0564A' }
-  return { label: 'Obesidad III', color: '#C2407A' }
+  if (b < 18.5) return { label: 'Bajo peso', color: '#9AB0AA' }
+  if (b < 25) return { label: 'Saludable', color: '#3BAA7E' }
+  if (b < 30) return { label: 'Sobrepeso', color: '#EDB54A' }
+  if (b < 35) return { label: 'Obesidad I', color: '#E8793A' }
+  if (b < 40) return { label: 'Obesidad II', color: '#D65A4A' }
+  return { label: 'Obesidad III', color: '#B4506E' }
 }
 
 /** Todo lo que la app necesita saber de un vistazo */

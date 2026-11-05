@@ -4,12 +4,12 @@ import { coachMessage, summary } from './lib/calc'
 import { syncUnlocked } from './lib/achievements'
 import { START_ID, addDays, emptyState, loadState, normalize, saveState, todayISO, uid, upsertStart } from './lib/store'
 import { sortByDate } from './lib/calc'
-import { Celebration, Sheet, Toast } from './components/ui'
-import { EventForm, InBodyForm, ProfileForm, WeighInForm } from './components/Forms'
+import { Celebration, Icon, Sheet, Toast, type IconName } from './components/ui'
+import { InBodyForm, ProfileForm, WeighInForm } from './components/Forms'
 import { Historial, Home, Logros, Registros } from './Screens'
 
 type Tab = 'inicio' | 'logros' | 'historial' | 'registros' | 'ajustes'
-type SheetKind = null | 'peso' | 'inbody' | 'evento' | 'menu'
+type SheetKind = null | 'peso' | 'inbody' | 'menu'
 
 export default function App() {
   // Al abrir, los logros que ya cumples se marcan sin festejo (no repite cosas viejas)
@@ -43,7 +43,7 @@ export default function App() {
     return (
       <div className="safe-top safe-bottom mx-auto flex min-h-dvh max-w-md flex-col px-5">
         <div className="flex flex-col items-center pt-4 text-center">
-          <img src="./icon.svg" alt="" width={88} height={88} className="mt-4 rounded-[22px] shadow-lg" />
+          <img src="./icon-192.png" alt="" width={88} height={88} className="mt-4 rounded-[22px] shadow-[0_18px_40px_-18px_rgba(18,48,44,0.7)]" />
           <h1 className="mt-2 font-display text-4xl font-extrabold">Peso</h1>
           <p className="mt-2 text-mute">Anota cuando quieras. Yo me encargo de celebrar cada cosa que logres: kilos, grasa, músculo y salud.</p>
         </div>
@@ -88,7 +88,6 @@ export default function App() {
             onAddInBody={() => setSheet('inbody')}
             onOpenLogros={() => setTab('logros')}
             onOpenCharts={() => setTab('historial')}
-            onDeleteEvent={(id) => setState({ ...state, events: state.events.filter((e) => e.id !== id) })}
           />
         )}
         {tab === 'logros' && <Logros state={state} />}
@@ -103,38 +102,41 @@ export default function App() {
         {tab === 'ajustes' && <Ajustes state={state} onChange={(n) => commit(n, undefined, true)} onReset={() => { setState(emptyState()); setTab('inicio') }} />}
       </div>
 
-      {/* Barra inferior */}
+      {/* Barra inferior: píldora de vidrio, la pestaña activa se expande con su nombre */}
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-4">
-        <div className="flex items-center gap-1 rounded-[28px] border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur">
-          {([
-            ['inicio', '🏠', 'Inicio'],
-            ['historial', '📊', 'Gráficas'],
-            ['registros', '📋', 'Registros'],
-            ['logros', '🏆', 'Logros'],
-            ['ajustes', '⚙️', 'Ajustes'],
-          ] as [Tab, string, string][]).map(([t, ic, l]) => (
-            <button key={t} onClick={() => setTab(t)} className={`flex min-w-0 flex-1 flex-col items-center rounded-3xl py-1.5 text-[10.5px] font-semibold transition ${tab === t ? 'bg-cream text-ink' : 'text-mute'}`}>
-              <span className={`text-lg ${tab === t ? '' : 'grayscale opacity-70'}`}>{ic}</span>
-              {l}
-            </button>
-          ))}
-          <button onClick={() => setSheet('menu')} className="grid h-14 w-14 shrink-0 place-items-center rounded-3xl bg-coral text-3xl font-light text-white shadow-md active:scale-95" aria-label="Agregar">+</button>
+        <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-0.5 rounded-full border border-white/90 bg-white/75 p-1.5 shadow-[0_14px_34px_-18px_rgba(18,48,44,0.6)] backdrop-blur-xl">
+            {([
+              ['inicio', 'home', 'Inicio'],
+              ['historial', 'chart', 'Gráficas'],
+              ['registros', 'list', 'Registros'],
+              ['logros', 'trophy', 'Logros'],
+              ['ajustes', 'gear', 'Ajustes'],
+            ] as [Tab, IconName, string][]).map(([t, ic, l]) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                aria-label={l}
+                className={`flex h-10 items-center justify-center gap-1.5 rounded-full text-[12.5px] font-semibold transition-all duration-300 ${tab === t ? 'min-w-0 flex-1 bg-ink px-3 text-white shadow-md' : 'w-10 shrink-0 border border-ink/10 text-ink/70'}`}
+              >
+                <span className="shrink-0"><Icon name={ic} size={18} /></span>
+                {tab === t && <span className="truncate">{l}</span>}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setSheet('menu')} className="grid h-[54px] w-[54px] shrink-0 place-items-center rounded-full border border-white/30 bg-ink text-3xl font-light text-white shadow-[0_14px_30px_-12px_rgba(18,48,44,0.8)] active:scale-95" aria-label="Agregar">+</button>
         </div>
       </nav>
 
       <Sheet open={sheet === 'menu'} onClose={() => setSheet(null)} title="¿Qué anotamos?">
         <div className="grid gap-3 pb-4">
           <button onClick={() => setSheet('peso')} className="card flex items-center gap-4 p-4 text-left">
-            <span className="text-4xl">⚖️</span>
+            <span className="bubble h-14 w-14 text-3xl">⚖️</span>
             <span><b className="font-display text-lg">Peso</b><br /><span className="text-sm text-mute">Lo de la báscula, con nota si quieres</span></span>
           </button>
           <button onClick={() => setSheet('inbody')} className="card flex items-center gap-4 p-4 text-left">
-            <span className="text-4xl">🔬</span>
+            <span className="bubble h-14 w-14 text-3xl">🔬</span>
             <span><b className="font-display text-lg">InBody</b><br /><span className="text-sm text-mute">Grasa, músculo y visceral</span></span>
-          </button>
-          <button onClick={() => setSheet('evento')} className="card flex items-center gap-4 p-4 text-left">
-            <span className="text-4xl">📅</span>
-            <span><b className="font-display text-lg">Evento</b><br /><span className="text-sm text-mute">Una fecha para la que quieres llegar bien</span></span>
           </button>
         </div>
       </Sheet>
@@ -160,9 +162,6 @@ export default function App() {
             commit(n, () => (state.inbodies.length ? '¡InBody guardado! Ya lo comparé con el primero: revisa “Tu cuerpo”.' : '¡Primer InBody guardado! Con el siguiente empezamos a comparar grasa y músculo.'))
           }}
         />
-      </Sheet>
-      <Sheet open={sheet === 'evento'} onClose={() => setSheet(null)} title="Nuevo evento">
-        <EventForm onSave={(e) => { setSheet(null); setState({ ...state, events: [...state.events, e] }) }} />
       </Sheet>
 
       {toast && queue.length === 0 && <Toast text={toast} onClose={() => setToast(null)} />}
@@ -217,9 +216,9 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
           try { onChange(normalize({ ...emptyState(), ...JSON.parse(await f.text()) })) } catch { /* archivo inválido */ }
         }} />
         {confirm ? (
-          <button onClick={onReset} className="btn w-full bg-coral text-white">Sí, borrar todo</button>
+          <button onClick={onReset} className="btn w-full bg-ember text-white">Sí, borrar todo</button>
         ) : (
-          <button onClick={() => setConfirm(true)} className="btn w-full text-coral">Borrar todo y empezar de nuevo</button>
+          <button onClick={() => setConfirm(true)} className="btn w-full text-ember">Borrar todo y empezar de nuevo</button>
         )}
       </section>
       <p className="px-1 pb-4 text-center text-xs text-mute">Los mensajes de salud son orientativos, no sustituyen a un médico.</p>
