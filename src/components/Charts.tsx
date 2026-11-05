@@ -2,12 +2,14 @@ import { useId, useState, type PointerEvent } from 'react'
 import type { InBody } from '../lib/types'
 import { daysBetween, fmt, sortByDate } from '../lib/calc'
 
-const INK = '#2A1F1A'
-const MUTE = '#8A7D72'
-const GRID = '#EEE3D3'
-const CORAL = '#E2512F'
-const BLUE = '#3F6FD8'
-const GREEN = '#2FB37A'
+const INK = '#12302C'
+const MUTE = '#6B837D'
+const GRID = '#D3E1DC'
+const CORAL = '#E8793A' // grasa
+const ACCENT = '#14524B'
+const MINT = '#6FB8A9'
+const BLUE = '#3C9A93'
+const GREEN = '#3BAA7E'
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const short = (s: string) => {
@@ -23,7 +25,8 @@ const addDaysISO = (s: string, n: number) => {
 /* ------------------------------------------------------------------ */
 /* Anillo de progreso con "tanque" de líquido adentro                  */
 /* ------------------------------------------------------------------ */
-export function ProgressRing({ pct, lostKg, caption, size = 200 }: { pct: number; lostKg: number; caption: string; size?: number }) {
+/** remaining: kg que faltan · label: debajo del número · caption: línea de abajo (avance) */
+export function ProgressRing({ pct, remaining, label, caption, size = 200 }: { pct: number; remaining: number; label: string; caption: string; size?: number }) {
   const id = useId().replace(/:/g, '')
   const p = Math.max(0, Math.min(1, pct))
   const R = 84, C = 2 * Math.PI * R
@@ -35,8 +38,8 @@ export function ProgressRing({ pct, lostKg, caption, size = 200 }: { pct: number
     <svg viewBox="0 0 200 200" width={size} height={size} role="img" aria-label={`${Math.round(p * 100)}% ${caption}`}>
       <defs>
         <linearGradient id={`rg-${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FFB347" />
-          <stop offset="1" stopColor={CORAL} />
+          <stop offset="0" stopColor={MINT} />
+          <stop offset="1" stopColor={ACCENT} />
         </linearGradient>
         <clipPath id={`in-${id}`}><circle cx="100" cy="100" r={inner} /></clipPath>
       </defs>
@@ -46,16 +49,23 @@ export function ProgressRing({ pct, lostKg, caption, size = 200 }: { pct: number
         strokeDasharray={`${C * Math.max(0.005, p)} ${C}`} transform="rotate(-90 100 100)"
         style={{ transition: 'stroke-dasharray 1s cubic-bezier(.3,.8,.3,1)' }}
       />
-      <circle cx="100" cy="100" r={inner} fill="#FFF6EA" />
+      <circle cx="100" cy="100" r={inner} fill="#F2F7F5" />
       <g clipPath={`url(#in-${id})`}>
         <g style={{ transform: `translateY(${level - 100}px)`, transition: 'transform 1s cubic-bezier(.3,.8,.3,1)' }}>
-          <path className="wave-a" d={wave(100, 5)} fill="#FFB347" opacity=".35" />
-          <path className="wave-b" d={wave(103, 4)} fill={CORAL} opacity=".28" />
+          <path className="wave-a" d={wave(100, 5)} fill={MINT} opacity=".35" />
+          <path className="wave-b" d={wave(103, 4)} fill={ACCENT} opacity=".28" />
         </g>
       </g>
-      <text x="100" y="98" textAnchor="middle" fontSize="40" fontWeight="800" fill={INK} className="font-display">{lostKg >= 0 ? '−' : '+'}{fmt(Math.abs(lostKg))}</text>
-      <text x="100" y="118" textAnchor="middle" fontSize="12" fontWeight="600" fill={MUTE}>kilos</text>
-      <text x="100" y="138" textAnchor="middle" fontSize="11" fontWeight="700" fill={CORAL}>{Math.round(p * 100)}% {caption}</text>
+      {remaining > 0.05 ? (
+        <>
+          <text x="100" y="70" textAnchor="middle" fontSize="11" fontWeight="600" fill={MUTE}>faltan</text>
+          <text x="100" y="104" textAnchor="middle" fontSize="40" fontWeight="800" fill={INK} className="font-display">{fmt(remaining)}</text>
+        </>
+      ) : (
+        <text x="100" y="104" textAnchor="middle" fontSize="34" fontWeight="800" fill={INK} className="font-display">¡Llegaste!</text>
+      )}
+      <text x="100" y="122" textAnchor="middle" fontSize="11" fontWeight="600" fill={MUTE}>{label}</text>
+      <text x="100" y="140" textAnchor="middle" fontSize="11" fontWeight="700" fill={ACCENT}>{caption}</text>
     </svg>
   )
 }
@@ -105,8 +115,8 @@ export function WeightChart({ data, goal, rate, inbodyDates = [], height = 190, 
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full touch-none select-none" onPointerMove={move} onPointerDown={move} onPointerLeave={() => setHover(null)}>
       <defs>
         <linearGradient id={`ar-${gid}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={CORAL} stopOpacity=".2" />
-          <stop offset="1" stopColor={CORAL} stopOpacity="0" />
+          <stop offset="0" stopColor={ACCENT} stopOpacity=".2" />
+          <stop offset="1" stopColor={ACCENT} stopOpacity="0" />
         </linearGradient>
       </defs>
       {!compact && Array.from({ length: ticks + 1 }).map((_, i) => {
@@ -122,21 +132,21 @@ export function WeightChart({ data, goal, rate, inbodyDates = [], height = 190, 
       {!compact && goal && goal >= lo && goal <= hi && (
         <g>
           <line x1={pl} x2={W - pr} y1={y(goal)} y2={y(goal)} stroke={GREEN} strokeDasharray="4 4" strokeWidth="1.5" />
-          <text x={pl + 4} y={y(goal) - 4} fontSize="9" fill="#1E8A5B" fontWeight="700">meta {fmt(goal)}</text>
+          <text x={pl + 4} y={y(goal) - 4} fontSize="9" fill="#237A5C" fontWeight="700">meta {fmt(goal)}</text>
         </g>
       )}
       {!compact && inbodyDates.map((d) => d >= d0 && <line key={d} x1={x(d)} x2={x(d)} y1={pt} y2={H - pb} stroke={BLUE} strokeOpacity=".35" strokeDasharray="2 3" />)}
       <path d={area} fill={`url(#ar-${gid})`} />
       {proj && (
         <g>
-          <line x1={x(last.date)} y1={y(last.trend)} x2={x(proj.date)} y2={y(proj.kg)} stroke={CORAL} strokeWidth="2" strokeDasharray="2 4" strokeLinecap="round" />
-          <circle cx={x(proj.date)} cy={y(proj.kg)} r="4" fill="#fff" stroke={CORAL} strokeWidth="2" />
+          <line x1={x(last.date)} y1={y(last.trend)} x2={x(proj.date)} y2={y(proj.kg)} stroke={ACCENT} strokeWidth="2" strokeDasharray="2 4" strokeLinecap="round" />
+          <circle cx={x(proj.date)} cy={y(proj.kg)} r="4" fill="#fff" stroke={ACCENT} strokeWidth="2" />
           <text x={x(proj.date) - 6} y={y(proj.kg) - 9} fontSize="9" textAnchor="end" fill={INK} fontWeight="700">~{short(proj.date)}</text>
         </g>
       )}
       {!compact && data.map((d) => <circle key={d.date + d.kg} cx={x(d.date)} cy={y(d.kg)} r="2.6" fill={INK} opacity=".28" />)}
-      <path d={trend} fill="none" stroke={CORAL} strokeWidth={compact ? 3 : 2.5} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={x(last.date)} cy={y(last.trend)} r="4.5" fill={CORAL} stroke="#fff" strokeWidth="2" />
+      <path d={trend} fill="none" stroke={ACCENT} strokeWidth={compact ? 3 : 2.5} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={x(last.date)} cy={y(last.trend)} r="4.5" fill={ACCENT} stroke="#fff" strokeWidth="2" />
       {h && (
         <g pointerEvents="none">
           <line x1={x(h.date)} x2={x(h.date)} y1={pt} y2={H - pb} stroke={INK} strokeOpacity=".25" />
@@ -147,7 +157,7 @@ export function WeightChart({ data, goal, rate, inbodyDates = [], height = 190, 
               <g>
                 <rect x={bx} y={pt - 2} width="92" height="34" rx="8" fill={INK} />
                 <text x={bx + 46} y={pt + 12} textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff">{fmt(h.kg)} kg</text>
-                <text x={bx + 46} y={pt + 25} textAnchor="middle" fontSize="9" fill="#D9CFC4">{short(h.date)} · tend. {fmt(h.trend)}</text>
+                <text x={bx + 46} y={pt + 25} textAnchor="middle" fontSize="9" fill="#B8D0C9">{short(h.date)} · tend. {fmt(h.trend)}</text>
               </g>
             )
           })()}
@@ -196,7 +206,7 @@ export function MonthlyBars({ data }: { data: { date: string; kg: number }[] }) 
         return (
           <g key={b.k} onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)} onPointerDown={() => setHover(i)}>
             <rect x={cx - step / 2} y={pt - 14} width={step} height={H} fill="transparent" />
-            <rect x={cx - bw / 2} y={yTop} width={bw} height={hh} rx="4" fill={down ? CORAL : '#CBBFB2'} opacity={hover === null || hover === i ? 1 : 0.45} />
+            <rect x={cx - bw / 2} y={yTop} width={bw} height={hh} rx="4" fill={down ? ACCENT : '#B9CBC5'} opacity={hover === null || hover === i ? 1 : 0.45} />
             <text x={cx} y={down ? zero + hh + 11 : yTop - 4} fontSize="9.5" fontWeight="700" textAnchor="middle" fill={INK}>
               {(hover === i || bars.length <= 6) ? `${b.d <= 0 ? '−' : '+'}${fmt(Math.abs(b.d))}` : ''}
             </text>
@@ -256,7 +266,7 @@ export function BodyDonut({ ib }: { ib?: InBody }) {
   const parts = [
     { l: 'Grasa', v: fat, c: CORAL },
     { l: 'Músculo', v: mus, c: BLUE },
-    { l: 'Agua, hueso y órganos', v: rest, c: '#CBBFB2' },
+    { l: 'Agua, hueso y órganos', v: rest, c: '#B9CBC5' },
   ].filter((p) => p.v > 0)
   const R = 46, C = 2 * Math.PI * R
   let acc = 0
@@ -351,7 +361,7 @@ export function MetricChart({ points, color, unit, ideal, idealLabel = 'ideal', 
         {ref !== undefined && (
           <g>
             <line x1={pl} x2={W - pr} y1={y(ref)} y2={y(ref)} stroke={GREEN} strokeWidth="1.5" strokeDasharray="4 4" />
-            <text x={W - pr} y={y(ref) - 4} fontSize="9" fontWeight="700" textAnchor="end" fill="#1E8A5B">{ideal !== undefined ? idealLabel : 'rango sano'} {fmtv(ref)}</text>
+            <text x={W - pr} y={y(ref) - 4} fontSize="9" fontWeight="700" textAnchor="end" fill="#237A5C">{ideal !== undefined ? idealLabel : 'rango sano'} {fmtv(ref)}</text>
           </g>
         )}
         {s.map((p) => <text key={p.date} x={x(p.date)} y={H - 5} fontSize="9" textAnchor="middle" fill={MUTE}>{short(p.date)}</text>)}
@@ -387,7 +397,7 @@ export function IdealBar({ label, unit, start, now, ideal, better, decimals = 1,
   const color = better === 'down' ? CORAL : BLUE
   const unitLeft = unit === '%' ? 'puntos' : unit
   return (
-    <div className="rounded-2xl bg-cream p-3.5">
+    <div className="tile p-3.5">
       <div className="mb-2 text-sm font-semibold">{label}</div>
       <div className="flex items-end justify-between">
         <div>
@@ -400,7 +410,7 @@ export function IdealBar({ label, unit, start, now, ideal, better, decimals = 1,
           <div className="font-display text-3xl font-extrabold leading-none text-leaf">{fmt(ideal, decimals)}<span className="text-base font-semibold text-mute"> {unit}</span></div>
         </div>
       </div>
-      <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-line">
+      <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-ink/10">
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(2, pct * 100)}%`, background: reached ? GREEN : color }} />
       </div>
       <div className="mt-1.5 flex justify-between text-[11px] text-mute">
@@ -522,7 +532,7 @@ export function GapChart({ points, ideal, better, unit, color, decimals = 1, est
         {!reached && <rect x={pl} y={Math.min(y(last.v), y(ideal))} width={W - pr - pl} height={Math.abs(y(last.v) - y(ideal))} fill={`url(#gap-${gid})`} />}
         {/* ideal */}
         <line x1={pl} x2={W - pr} y1={y(ideal)} y2={y(ideal)} stroke={GREEN} strokeWidth="2" strokeDasharray="5 4" />
-        <text x={pl + 4} y={y(ideal) + (better === 'down' ? 12 : -5)} fontSize="9.5" fontWeight="700" fill="#1E8A5B">🚩 ideal {fmt(ideal, decimals)} {unit}</text>
+        <text x={pl + 4} y={y(ideal) + (better === 'down' ? 12 : -5)} fontSize="9.5" fontWeight="700" fill="#237A5C">🚩 ideal {fmt(ideal, decimals)} {unit}</text>
         {/* historia */}
         <path d={line} fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
         {!estimated && s.map((p) => <circle key={p.date} cx={x(p.date)} cy={y(p.v)} r="3.5" fill={color} stroke="#fff" strokeWidth="1.5" />)}
@@ -546,7 +556,7 @@ export function GapChart({ points, ideal, better, unit, color, decimals = 1, est
             <text x={bx + 12} y={(y(last.v) + y(ideal)) / 2 + 22} fontSize="9" fill={MUTE}>{unit === '%' ? 'puntos' : unit}</text>
           </g>
         ) : (
-          <text x={bx + 4} y={y(ideal) + 4} fontSize="12" fontWeight="800" fill="#1E8A5B">¡Llegaste!</text>
+          <text x={bx + 4} y={y(ideal) + 4} fontSize="12" fontWeight="800" fill="#237A5C">¡Llegaste!</text>
         )}
       </svg>
       <p className="mt-1 text-sm">

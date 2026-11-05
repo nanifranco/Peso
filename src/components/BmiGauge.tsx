@@ -2,12 +2,12 @@ import { bmiCategory, fmt } from '../lib/calc'
 
 const MIN = 16, MAX = 42
 const SEGS: [number, number, string][] = [
-  [16, 18.5, '#C9CFD6'],
-  [18.5, 25, '#2FB37A'],
-  [25, 30, '#F5B83D'],
-  [30, 35, '#FF8A4C'],
-  [35, 40, '#F0564A'],
-  [40, 42, '#C2407A'],
+  [16, 18.5, '#B7C8C2'],
+  [18.5, 25, '#3BAA7E'],
+  [25, 30, '#EDB54A'],
+  [30, 35, '#E8793A'],
+  [35, 40, '#D65A4A'],
+  [40, 42, '#B4506E'],
 ]
 
 const pt = (v: number, r: number) => {
@@ -30,9 +30,9 @@ export default function BmiGauge({ value, start }: { value: number; start: numbe
         {SEGS.map(([a, b, c]) => (
           <path key={a} d={arc(a + 0.15, b - 0.15, 80)} stroke={c} strokeWidth="16" fill="none" strokeLinecap="butt" />
         ))}
-        {Math.abs(start - value) > 0.3 && <circle cx={sx} cy={sy} r="5" fill="none" stroke="#2A1F1A" strokeOpacity=".35" strokeWidth="2" strokeDasharray="2 2" />}
+        {Math.abs(start - value) > 0.3 && <circle cx={sx} cy={sy} r="5" fill="none" stroke="#12302C" strokeOpacity=".35" strokeWidth="2" strokeDasharray="2 2" />}
         <circle cx={nx} cy={ny} r="11" fill="#fff" stroke={cat.color} strokeWidth="5" />
-        <text x="100" y="86" textAnchor="middle" className="font-display" fontSize="30" fontWeight="800" fill="#2A1F1A">{fmt(value)}</text>
+        <text x="100" y="86" textAnchor="middle" className="font-display" fontSize="30" fontWeight="800" fill="#12302C">{fmt(value)}</text>
         <text x="100" y="106" textAnchor="middle" fontSize="12" fontWeight="600" fill={cat.color}>{cat.label}</text>
       </svg>
     </div>
