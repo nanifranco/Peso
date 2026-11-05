@@ -25,8 +25,8 @@ const addDaysISO = (s: string, n: number) => {
 /* ------------------------------------------------------------------ */
 /* Anillo de progreso con "tanque" de líquido adentro                  */
 /* ------------------------------------------------------------------ */
-/** remaining: kg que faltan · label: debajo del número · caption: línea de abajo (avance) */
-export function ProgressRing({ pct, remaining, label, caption, size = 200 }: { pct: number; remaining: number; label: string; caption: string; size?: number }) {
+/** El número grande son los kg que bajaste; el relleno es el avance (pct) hacia el objetivo */
+export function ProgressRing({ pct, lostKg, caption, size = 200 }: { pct: number; lostKg: number; caption: string; size?: number }) {
   const id = useId().replace(/:/g, '')
   const p = Math.max(0, Math.min(1, pct))
   const R = 84, C = 2 * Math.PI * R
@@ -56,16 +56,10 @@ export function ProgressRing({ pct, remaining, label, caption, size = 200 }: { p
           <path className="wave-b" d={wave(103, 4)} fill={ACCENT} opacity=".28" />
         </g>
       </g>
-      {remaining > 0.05 ? (
-        <>
-          <text x="100" y="70" textAnchor="middle" fontSize="11" fontWeight="600" fill={MUTE}>faltan</text>
-          <text x="100" y="104" textAnchor="middle" fontSize="40" fontWeight="800" fill={INK} className="font-display">{fmt(remaining)}</text>
-        </>
-      ) : (
-        <text x="100" y="104" textAnchor="middle" fontSize="34" fontWeight="800" fill={INK} className="font-display">¡Llegaste!</text>
-      )}
-      <text x="100" y="122" textAnchor="middle" fontSize="11" fontWeight="600" fill={MUTE}>{label}</text>
-      <text x="100" y="140" textAnchor="middle" fontSize="11" fontWeight="700" fill={ACCENT}>{caption}</text>
+      <text x="100" y="70" textAnchor="middle" fontSize="11" fontWeight="600" fill={MUTE}>{lostKg >= 0 ? 'bajaste' : 'subiste'}</text>
+      <text x="100" y="104" textAnchor="middle" fontSize="40" fontWeight="800" fill={INK} className="font-display">{lostKg >= 0 ? '−' : '+'}{fmt(Math.abs(lostKg))}</text>
+      <text x="100" y="122" textAnchor="middle" fontSize="11" fontWeight="600" fill={MUTE}>kilos en total</text>
+      <text x="100" y="140" textAnchor="middle" fontSize="11" fontWeight="700" fill={ACCENT}>{Math.round(p * 100)}% {caption}</text>
     </svg>
   )
 }
@@ -419,7 +413,7 @@ export function IdealBar({ label, unit, start, now, ideal, better, decimals = 1,
       </div>
       <div className="mt-2 text-sm">
         {reached ? (
-          <b className="text-leaf">¡Llegaste a tu ideal! 🎉</b>
+          <b className="text-leaf">¡Llegaste a tu ideal!</b>
         ) : (
           <>Te faltan <b>{fmt(left, decimals)} {unitLeft}</b>{done > 0 ? <> · vas en el <b>{Math.round(pct * 100)}%</b> del camino</> : null}</>
         )}
@@ -465,7 +459,7 @@ export function GoalRing({ title, start, now, ideal, better, unit, color, decima
         <circle cx="50" cy="50" r={R} fill="none" stroke={c} strokeWidth="9" strokeLinecap="round"
           strokeDasharray={`${C * Math.max(0.01, pct)} ${C}`} transform="rotate(-90 50 50)" style={{ transition: 'stroke-dasharray 1s' }} />
         {reached ? (
-          <text x="50" y="58" textAnchor="middle" fontSize="26">🎉</text>
+          <path d="M38 51l8 8 16-17" fill="none" stroke={GREEN} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
         ) : (
           <>
             <text x="50" y="40" textAnchor="middle" fontSize="9" fill={MUTE} fontWeight="600">faltan</text>
@@ -532,7 +526,7 @@ export function GapChart({ points, ideal, better, unit, color, decimals = 1, est
         {!reached && <rect x={pl} y={Math.min(y(last.v), y(ideal))} width={W - pr - pl} height={Math.abs(y(last.v) - y(ideal))} fill={`url(#gap-${gid})`} />}
         {/* ideal */}
         <line x1={pl} x2={W - pr} y1={y(ideal)} y2={y(ideal)} stroke={GREEN} strokeWidth="2" strokeDasharray="5 4" />
-        <text x={pl + 4} y={y(ideal) + (better === 'down' ? 12 : -5)} fontSize="9.5" fontWeight="700" fill="#237A5C">🚩 ideal {fmt(ideal, decimals)} {unit}</text>
+        <text x={pl + 4} y={y(ideal) + (better === 'down' ? 12 : -5)} fontSize="9.5" fontWeight="700" fill="#237A5C">ideal {fmt(ideal, decimals)} {unit}</text>
         {/* historia */}
         <path d={line} fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
         {!estimated && s.map((p) => <circle key={p.date} cx={x(p.date)} cy={y(p.v)} r="3.5" fill={color} stroke="#fff" strokeWidth="1.5" />)}
@@ -560,7 +554,7 @@ export function GapChart({ points, ideal, better, unit, color, decimals = 1, est
         )}
       </svg>
       <p className="mt-1 text-sm">
-        {reached ? <b className="text-leaf">Ya estás en tu ideal 🎉</b>
+        {reached ? <b className="text-leaf">Ya estás en tu ideal</b>
           : eta ? <>A tu ritmo de los últimos meses llegarías por <b>{new Date(eta + 'T12:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}</b>.</>
           : <>Te faltan <b>{fmt(gap, decimals)} {unit === '%' ? 'puntos' : unit}</b>. Con más registros te digo para cuándo llegarías.</>}
       </p>

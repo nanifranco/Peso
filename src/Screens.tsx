@@ -5,6 +5,7 @@ import { KIND_LABEL, nextWeightMilestone, withHistory } from './lib/achievements
 import { BodyDonut, CompositionChart, GapChart, GoalRing, MetricChart, MonthlyBars, ProgressRing, WeightChart } from './components/Charts'
 import BmiGauge from './components/BmiGauge'
 import { Progress } from './components/ui'
+import { Badge, Icon, KIND_TONE } from './components/icons'
 
 const dateLabel = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -34,40 +35,53 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenChart
   // Con meta: avance a la meta. Sin meta: avance al siguiente escalón de 5% (−5%, −10%, −15%…)
   const hasGoal = !!p.goalKg && sum.startKg > p.goalKg
   const nextStep = Math.max(5, Math.ceil((Math.max(0, sum.lostPct) + 0.01) / 5) * 5)
-  const ringPct = hasGoal ? sum.lost / (sum.startKg - p.goalKg!) : sum.lostPct / nextStep
-  // Peso al que apunta el anillo: tu meta, o el siguiente escalón de 5%
-  const ringTarget = hasGoal ? p.goalKg! : sum.startKg * (1 - nextStep / 100)
+  // El anillo mide el camino de tu peso inicial a un peso sano (IMC < 25).
+  // Si empezaste ya en peso sano: hacia tu meta, o al siguiente escalón de 5%.
+  const healthyKg = 25 * (p.heightCm / 100) ** 2 - 0.05
+  const toHealthy = sum.startKg > healthyKg
+  const ringTarget = toHealthy ? healthyKg : hasGoal ? p.goalKg! : sum.startKg * (1 - nextStep / 100)
+  const ringPct = (sum.startKg - sum.current) / Math.max(0.1, sum.startKg - ringTarget)
+  const ringLeft = Math.max(0, sum.current - ringTarget)
+  const ringName = toHealthy ? 'peso sano' : hasGoal ? 'tu meta' : `−${nextStep}%`
 
   return (
     <div className="space-y-3">
       <header className="flex items-end justify-between px-1 pb-1">
         <div>
-          <div className="text-sm text-mute">{greet}</div>
+          <div className="text-sm text-mute">{greet},</div>
           <h1 className="font-display text-3xl font-extrabold">{p.name}</h1>
+          <div className="mt-0.5 text-xs text-mute">Hoy es {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
         </div>
-        {sum.daysSinceLast > 0 && <div className="text-right text-xs text-mute">último registro<br />hace {sum.daysSinceLast} {sum.daysSinceLast === 1 ? 'día' : 'días'}</div>}
+        {sum.daysSinceLast > 0 && (
+          <span className="chip mb-1"><Icon name="calendar" size={13} /> hace {sum.daysSinceLast} {sum.daysSinceLast === 1 ? 'día' : 'días'}</span>
+        )}
       </header>
 
       {/* Héroe: anillo de progreso */}
       <section className="hero relative overflow-hidden rounded-[32px] p-5">
         <div className="flex justify-center">
-          <ProgressRing
-            pct={ringPct}
-            remaining={Math.max(0, sum.current - ringTarget)}
-            label={hasGoal ? 'kg para tu meta' : `kg para el −${nextStep}%`}
-            caption={`${Math.round(Math.max(0, Math.min(1, ringPct)) * 100)}% · ${hasGoal ? `meta ${fmt(p.goalKg!)} kg` : `llevas −${fmt(Math.max(0, sum.lost))}`}`}
-            size={210}
-          />
+          <ProgressRing pct={ringPct} lostKg={sum.lost} caption={`hacia ${ringName}`} size={210} />
+        </div>
+        <div className="-mt-1 mb-1 flex justify-center">
+          {ringLeft > 0.05 ? (
+            <span className="chip text-[12px]!">
+              <Icon name={toHealthy ? 'heart' : 'target'} size={14} className="text-coral" />
+              Faltan <b className="text-ink">{fmt(ringLeft)} kg</b> para {ringName} ({fmt(ringTarget)} kg)
+            </span>
+          ) : (
+            <span className="chip text-[12px]!"><Icon name="check" size={14} className="text-leaf" /> Ya llegaste a {ringName}</span>
+          )}
         </div>
         <div className="mt-2 grid grid-cols-4 gap-2 text-center">
-          <Tile label="Hoy" value={fmt(sum.current)} unit="kg" />
-          <Tile label="Inicio" value={fmt(sum.startKg)} unit="kg" />
-          <Tile label="Grasa" value={fmt(sum.fatNow, 0)} unit="%" />
-          <Tile label="Ritmo" value={sum.rate !== undefined ? `${sum.rate <= 0 ? '−' : '+'}${fmt(Math.abs(sum.rate))}` : '—'} unit="kg/sem" />
+          <Tile icon="scale" label="Hoy" value={fmt(sum.current)} unit="kg" />
+          <Tile icon="flag" label="Inicio" value={fmt(sum.startKg)} unit="kg" />
+          <Tile icon="flame" label="Grasa" value={fmt(sum.fatNow, 0)} unit="%" />
+          <Tile icon="trendDown" label="Ritmo" value={sum.rate !== undefined ? `${sum.rate <= 0 ? '−' : '+'}${fmt(Math.abs(sum.rate))}` : '—'} unit="kg/sem" />
         </div>
         {lastEq && lost > 0.5 && (
-          <div className="tile mt-3 px-3 py-2 text-center text-[13px] text-ink/75">
-            {lastEq.emoji} Ya no cargas {lastEq.title.split(': ')[1]}
+          <div className="tile mt-3 flex items-center gap-3 px-2.5 py-2 text-[13px] text-ink/75">
+            <Badge icon={lastEq.icon} tone="sun" size={36} />
+            <span>Ya no cargas <b className="text-ink">{lastEq.title.split(': ')[1]}</b></span>
           </div>
         )}
         <button onClick={onAdd} className="btn-primary mt-3 w-full text-lg">+ Anotar peso</button>
@@ -77,7 +91,7 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenChart
       {sum.ws.length > 1 && (
         <button onClick={onOpenCharts} className="card block w-full p-4 text-left">
           <div className="mb-1 flex items-center justify-between">
-            <div className="font-display text-lg font-bold">Tu tendencia</div>
+            <div className="flex items-center gap-2.5"><Badge icon="trendDown" tone="teal" size={34} /><span className="font-display text-lg font-bold">Tu tendencia</span></div>
             <div className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-white">Ver gráficas →</div>
           </div>
           <WeightChart data={sum.ws} compact height={90} />
@@ -87,11 +101,11 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenChart
       {/* Siguiente logro */}
       {next && (
         <button onClick={onOpenLogros} className="card flex w-full items-center gap-4 p-4 text-left">
-          <div className="bubble h-14 w-14 text-3xl">{next.emoji}</div>
+          <Badge icon={next.icon} tone={KIND_TONE[next.kind]} size={56} />
           <div className="min-w-0 flex-1">
             <div className="text-[11px] font-bold uppercase tracking-wider text-ember">Siguiente logro</div>
             <div className="truncate font-display text-lg font-bold">{next.title}</div>
-            <div className="mb-2 text-sm text-mute">{next.remaining}{(next.remainingKg ?? 9) < 1 ? ' · ¡ya casi! 👀' : ''}</div>
+            <div className="mb-2 text-sm text-mute">{next.remaining}{(next.remainingKg ?? 9) < 1 ? ' · ¡ya casi!' : ''}</div>
             <Progress value={next.progress ?? 0} />
           </div>
         </button>
@@ -101,7 +115,7 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenChart
       <section className="card flex items-center gap-4 p-4">
         <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-white/80 font-display text-lg font-extrabold text-white shadow-md" style={{ background: cat.color }}>{fmt(sum.curBmi)}</div>
         <div className="flex-1">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-mute">IMC</div>
+          <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-mute"><Icon name="gauge" size={13} /> IMC</div>
           <div className="font-display text-lg font-bold">{cat.label}</div>
           <div className="text-sm text-mute">empezaste en {fmt(sum.startBmi)} ({bmiCategory(sum.startBmi).label})</div>
         </div>
@@ -111,7 +125,7 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenChart
       {lastIB ? (
         <section className="card p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-xl font-bold">Tu cuerpo</h2>
+            <h2 className="flex items-center gap-2.5 font-display text-xl font-bold"><Badge icon="composition" tone="sky" size={34} />Tu cuerpo</h2>
             <button onClick={onAddInBody} className="rounded-full bg-ink px-3 py-1.5 text-sm font-semibold text-white">+ InBody</button>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
@@ -134,7 +148,7 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenChart
         </section>
       ) : (
         <button onClick={onAddInBody} className="card flex w-full items-center gap-4 p-4 text-left">
-          <div className="bubble h-14 w-14 text-2xl">🔬</div>
+          <Badge icon="composition" tone="sky" size={56} />
           <div className="flex-1">
             <div className="font-display text-lg font-bold">¿Tienes un InBody?</div>
             <div className="text-sm text-mute">Súbelo y celebramos la grasa que pierdes y el músculo que ganas</div>
@@ -146,15 +160,18 @@ export function Home({ state, sum, onAdd, onAddInBody, onOpenLogros, onOpenChart
   )
 }
 
-function Tile({ label, value, unit }: { label: string; value: string; unit: string }) {
+function Tile({ icon, label, value, unit }: { icon: string; label: string; value: string; unit: string }) {
   return (
     <div className="tile px-1 py-2">
+      <Icon name={icon} size={15} className="mx-auto mb-0.5 text-coral/70" />
       <div className="text-[10px] font-bold uppercase tracking-wider text-ink/45">{label}</div>
       <div className="font-display text-lg font-extrabold leading-tight">{value}</div>
       <div className="text-[10px] text-ink/50">{unit}</div>
     </div>
   )
 }
+
+const KIND_ICON: Record<string, string> = { salud: 'heart', cuerpo: 'composition', meta: 'target', equivalencia: 'backpack', constancia: 'calendar' }
 
 export function Logros({ state }: { state: State }) {
   const all = withHistory(state)
@@ -165,22 +182,35 @@ export function Logros({ state }: { state: State }) {
     <div className="space-y-5">
       <header className="px-1">
         <h1 className="font-display text-3xl font-extrabold">Logros</h1>
-        <p className="text-sm text-mute">{got} de {all.length} desbloqueados</p>
-        <div className="mt-3"><Progress value={all.length ? got / all.length : 0} color="#3BAA7E" /></div>
+        <div className="card mt-3 flex items-center gap-4 p-4">
+          <Badge icon="trophy" tone="dark" size={56} />
+          <div className="flex-1">
+            <div className="font-display text-2xl font-bold leading-none">{got}<span className="text-base font-medium text-mute"> de {all.length}</span></div>
+            <div className="mb-2 mt-0.5 text-xs text-mute">desbloqueados</div>
+            <Progress value={all.length ? got / all.length : 0} />
+          </div>
+        </div>
       </header>
       {kinds.map((k) => {
         const list = all.filter((a) => a.kind === k)
         if (!list.length) return null
         return (
           <section key={k}>
-            <h2 className="mb-2 px-1 font-display text-lg font-bold">{KIND_LABEL[k]}</h2>
+            <h2 className="mb-2 flex items-center gap-2 px-1 font-display text-lg font-bold">
+              <Badge icon={KIND_ICON[k]} tone={KIND_TONE[k]} size={30} />
+              {KIND_LABEL[k]}
+              <span className="ml-auto text-xs font-semibold text-mute">{list.filter((a) => a.unlocked).length}/{list.length}</span>
+            </h2>
             <div className="grid grid-cols-2 gap-3">
               {list.map((a) => (
-                <button key={a.id} onClick={() => setOpen(a)} className={`card p-3.5 text-left ${a.unlocked ? '' : 'opacity-60'}`}>
-                  <div className={`text-3xl ${a.unlocked ? '' : 'grayscale'}`}>{a.unlocked ? a.emoji : '🔒'}</div>
+                <button key={a.id} onClick={() => setOpen(a)} className={`card relative p-3.5 text-left ${a.unlocked ? '' : 'opacity-70'}`}>
+                  <div className="relative w-fit">
+                    <Badge icon={a.icon} tone={a.unlocked ? KIND_TONE[a.kind] : 'mute'} size={46} />
+                    {!a.unlocked && <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-mute shadow"><Icon name="lock" size={11} stroke={2.2} /></span>}
+                  </div>
                   <div className="mt-1.5 text-sm font-semibold leading-tight">{a.title}</div>
                   {a.unlocked ? (
-                    <div className="mt-1 text-[11px] text-leaf">✓ {state.unlocked[a.id] ? new Date(state.unlocked[a.id] + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : 'logrado'}</div>
+                    <div className="mt-1 flex items-center gap-1 text-[11px] text-leaf"><Icon name="check" size={12} stroke={2.4} /> {state.unlocked[a.id] ? new Date(state.unlocked[a.id] + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : 'logrado'}</div>
                   ) : (
                     <div className="mt-2 space-y-1">
                       {a.progress !== undefined && <Progress value={a.progress} color="#8AA29B" />}
@@ -196,7 +226,9 @@ export function Logros({ state }: { state: State }) {
       {open && (
         <div className="fade-in fixed inset-0 z-40 flex items-center justify-center bg-ink/45 px-6 backdrop-blur-sm" onClick={() => setOpen(null)}>
           <div className="pop-in glass w-full max-w-sm p-6 text-center">
-            <div className="text-6xl">{open.unlocked ? open.emoji : '🔒'}</div>
+            <div className="relative mx-auto w-fit">
+              <Badge icon={open.unlocked ? open.icon : 'lock'} tone={open.unlocked ? KIND_TONE[open.kind] : 'mute'} size={84} />
+            </div>
             <h3 className="mt-3 font-display text-2xl font-extrabold">{open.title}</h3>
             <p className="mt-2 text-sm text-ink/75">{open.unlocked ? open.body : `Todavía no: ${open.remaining ?? 'sigue así'}.`}</p>
           </div>
@@ -214,19 +246,19 @@ export function Historial({ state, sum, onOpenSettings }: { state: State; sum: S
         <p className="text-sm text-mute">Toca o desliza sobre las gráficas para ver cada dato</p>
       </header>
       <section className="card p-4">
-        <h2 className="font-display text-lg font-bold">Peso</h2>
+        <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Badge icon="scale" tone="teal" size={30} />Peso</h2>
         <p className="mb-2 text-xs text-mute">
           <Key c="#14524B" /> tendencia · <Key c="#12302C" o=".3" dot /> báscula{sum.rate !== undefined && sum.rate < 0 ? <> · <Key c="#14524B" dash /> a tu ritmo</> : null}
         </p>
         <WeightChart data={sum.ws} goal={sum.p.goalKg} rate={sum.rate} inbodyDates={state.inbodies.map((i) => i.date)} />
       </section>
       <section className="card p-4">
-        <h2 className="font-display text-lg font-bold">Kilos por mes</h2>
+        <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Badge icon="chart" tone="mint" size={30} />Kilos por mes</h2>
         <p className="mb-2 text-xs text-mute">Cuánto cambió tu peso cada mes</p>
         <MonthlyBars data={state.weighIns} />
       </section>
       <section className="card p-5">
-        <h2 className="mb-1 font-display text-lg font-bold">IMC</h2>
+        <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-bold"><Badge icon="gauge" tone="ember" size={30} />IMC</h2>
         <BmiGauge value={sum.curBmi} start={sum.startBmi} />
         <p className="mt-1 text-center text-xs text-mute">El círculo punteado es donde empezaste ({fmt(sum.startBmi)})</p>
       </section>
@@ -262,8 +294,8 @@ export function Registros({ state, onDeleteWeighIn, onDeleteInBody }: { state: S
         <p className="text-sm text-mute">{state.weighIns.length} pesos · {state.inbodies.length} InBody</p>
       </header>
       <div className="flex gap-2 px-1">
-        {([['todo', 'Todo'], ['peso', '⚖️ Peso'], ['inbody', '🔬 InBody']] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`rounded-full px-4 py-2 text-sm font-semibold transition ${filter === k ? 'bg-ink text-white shadow-md' : 'border border-white/90 bg-white/60 text-ink backdrop-blur'}`}>{l}</button>
+        {([['todo', 'Todo', 'list'], ['peso', 'Peso', 'scale'], ['inbody', 'InBody', 'composition']] as const).map(([k, l, ic]) => (
+          <button key={k} onClick={() => setFilter(k)} className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${filter === k ? 'bg-ink text-white shadow-md' : 'border border-white/90 bg-white/60 text-ink backdrop-blur'}`}><Icon name={ic} size={15} />{l}</button>
         ))}
       </div>
       {groups.length === 0 && <p className="px-1 text-sm text-mute">Nada por aquí todavía.</p>}
@@ -275,7 +307,7 @@ export function Registros({ state, onDeleteWeighIn, onDeleteInBody }: { state: S
               const d = r.t === 'w' ? deltaById[r.id] : undefined
               return (
                 <div key={r.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="w-10 shrink-0 text-center leading-tight">
+                  <div className={`w-11 shrink-0 rounded-2xl border border-white/90 py-1 text-center leading-tight ${r.t === 'i' ? 'bg-sky/15' : 'bg-white/60'}`}>
                     <div className="font-display text-xl font-extrabold">{Number(r.date.slice(8))}</div>
                     <div className="text-[10px] uppercase text-mute">{new Date(r.date + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', '')}</div>
                   </div>
@@ -288,11 +320,11 @@ export function Registros({ state, onDeleteWeighIn, onDeleteInBody }: { state: S
                         )}
                         {r.w.id === 'start' && <span className="rounded-full bg-sun/40 px-2 py-0.5 text-[10px] font-bold">inicio</span>}
                       </div>
-                      {r.w.note && r.w.id !== 'start' && <div className="truncate text-sm text-ink/70">📝 {r.w.note}</div>}
+                      {r.w.note && r.w.id !== 'start' && <div className="flex items-center gap-1 truncate text-sm text-ink/70"><Icon name="pencil" size={13} className="shrink-0 text-mute" /> <span className="truncate">{r.w.note}</span></div>}
                     </div>
                   ) : (
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-sky">🔬 InBody</div>
+                      <div className="flex items-center gap-1.5 font-semibold text-sky"><Icon name="composition" size={15} /> InBody</div>
                       <div className="text-xs text-ink/70">
                         {[r.i.kg && `${fmt(r.i.kg)} kg`, r.i.fatPct && `${fmt(r.i.fatPct)}% grasa`, r.i.muscleKg && `${fmt(r.i.muscleKg)} kg músculo`, r.i.visceral && `visceral ${r.i.visceral}`].filter(Boolean).join(' · ')}
                       </div>
@@ -351,7 +383,7 @@ function BodySection({ state, sum, onOpenSettings }: { state: State; sum: Summar
       <section className="card space-y-4 p-4">
         <div>
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold">Tus ideales</h2>
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Badge icon="target" tone="teal" size={30} />Tus ideales</h2>
             <button onClick={onOpenSettings} className="text-sm font-semibold text-coral underline underline-offset-4">Cambiar en Ajustes</button>
           </div>
         </div>
@@ -394,7 +426,7 @@ function BodySection({ state, sum, onOpenSettings }: { state: State; sum: Summar
 
 
       <section className="card p-4">
-        <h2 className="font-display text-lg font-bold">De qué estás hecha</h2>
+        <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Badge icon="composition" tone="sky" size={30} />De qué estás hecha</h2>
         <p className="mb-3 text-xs text-mute">Tu último InBody ({dateLabel(l.date)})</p>
         <BodyDonut ib={l} />
       </section>

@@ -48,7 +48,8 @@ export type AchievementKind = 'salud' | 'cuerpo' | 'equivalencia' | 'meta' | 'co
 export interface Achievement {
   id: string
   kind: AchievementKind
-  emoji: string
+  /** nombre del ícono (src/components/icons.tsx) */
+  icon: string
   title: string
   body: string
   unlocked: boolean

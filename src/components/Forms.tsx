@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { InBody, Profile, WeighIn } from '../lib/types'
 import { addDays, todayISO, uid } from '../lib/store'
+import { Badge } from './icons'
 
 const num = (s: string) => {
   const n = parseFloat(s.replace(',', '.'))
@@ -71,8 +72,10 @@ export function InBodyForm({ onSave }: { onSave: (ib: InBody) => void }) {
       }}
       className="space-y-4 pb-4"
     >
-      <p className="tile p-3 text-sm text-ink/80">
-        📄 Copia los números de tu hoja de InBody. Llena solo los que tengas; con <b>peso</b> y <b>% de grasa</b> ya se desbloquean muchos logros.
+      <p className="tile flex gap-3 p-3 text-sm text-ink/80">
+        <span className="shrink-0"><Badge icon="doc" tone="sky" size={36} /></span>
+        <span>
+        Copia los números de tu hoja de InBody. Llena solo los que tengas; con <b>peso</b> y <b>% de grasa</b> ya se desbloquean muchos logros.</span>
       </p>
       <div>
         <label className="label">Fecha del estudio</label>

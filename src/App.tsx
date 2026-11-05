@@ -4,7 +4,8 @@ import { coachMessage, summary } from './lib/calc'
 import { syncUnlocked } from './lib/achievements'
 import { START_ID, addDays, emptyState, loadState, normalize, saveState, todayISO, uid, upsertStart } from './lib/store'
 import { sortByDate } from './lib/calc'
-import { Celebration, Icon, Sheet, Toast, type IconName } from './components/ui'
+import { Celebration, Sheet, Toast } from './components/ui'
+import { Badge, Icon, type IconName } from './components/icons'
 import { InBodyForm, ProfileForm, WeighInForm } from './components/Forms'
 import { Historial, Home, Logros, Registros } from './Screens'
 
@@ -131,11 +132,11 @@ export default function App() {
       <Sheet open={sheet === 'menu'} onClose={() => setSheet(null)} title="¿Qué anotamos?">
         <div className="grid gap-3 pb-4">
           <button onClick={() => setSheet('peso')} className="card flex items-center gap-4 p-4 text-left">
-            <span className="bubble h-14 w-14 text-3xl">⚖️</span>
+            <Badge icon="scale" tone="teal" size={56} />
             <span><b className="font-display text-lg">Peso</b><br /><span className="text-sm text-mute">Lo de la báscula, con nota si quieres</span></span>
           </button>
           <button onClick={() => setSheet('inbody')} className="card flex items-center gap-4 p-4 text-left">
-            <span className="bubble h-14 w-14 text-3xl">🔬</span>
+            <Badge icon="composition" tone="sky" size={56} />
             <span><b className="font-display text-lg">InBody</b><br /><span className="text-sm text-mute">Grasa, músculo y visceral</span></span>
           </button>
         </div>
@@ -186,7 +187,7 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
     <div className="space-y-4">
       <h1 className="px-1 font-display text-3xl font-extrabold">Ajustes</h1>
       <section className="card p-5">
-        <h2 className="mb-3 font-display text-xl font-bold">Tus datos</h2>
+        <h2 className="mb-3 flex items-center gap-2.5 font-display text-xl font-bold"><Badge icon="pencil" tone="teal" size={34} />Tus datos</h2>
         <ProfileForm
           initial={state.profile}
           initialStart={first ? { kg: first.kg, date: first.date } : undefined}
@@ -206,10 +207,10 @@ function Ajustes({ state, onChange, onReset }: { state: State; onChange: (s: Sta
         />
       </section>
       <section className="card space-y-3 p-5">
-        <h2 className="font-display text-xl font-bold">Respaldo</h2>
+        <h2 className="flex items-center gap-2.5 font-display text-xl font-bold"><Badge icon="download" tone="mint" size={34} />Respaldo</h2>
         <p className="text-sm text-mute">Todo vive solo en este teléfono. Haz un respaldo de vez en cuando.</p>
-        <button onClick={exportData} className="btn-ghost w-full">⬇️ Descargar respaldo</button>
-        <button onClick={() => fileRef.current?.click()} className="btn-ghost w-full">⬆️ Restaurar respaldo</button>
+        <button onClick={exportData} className="btn-ghost flex w-full items-center justify-center gap-2"><Icon name="download" size={18} /> Descargar respaldo</button>
+        <button onClick={() => fileRef.current?.click()} className="btn-ghost flex w-full items-center justify-center gap-2"><Icon name="upload" size={18} /> Restaurar respaldo</button>
         <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={async (e) => {
           const f = e.target.files?.[0]
           if (!f) return
