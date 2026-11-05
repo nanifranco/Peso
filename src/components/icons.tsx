@@ -13,6 +13,7 @@ const P: Record<string, ReactNode> = {
   gear: <><circle cx="12" cy="12" r="3" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6" /></>,
 
   // registros y acciones
+  plus: <path d="M12 5v14M5 12h14" />,
   scale: <><rect x="3.5" y="5" width="17" height="15" rx="4" /><path d="M8.5 11a3.5 3.5 0 0 1 7 0" /><path d="M12 11l1.6-2" /></>,
   composition: <><circle cx="12" cy="12" r="8" /><path d="M12 4v8l6.6 4.4" /><path d="M12 12l-7.6 2.4" /></>,
   lock: <><rect x="5" y="10.5" width="14" height="10" rx="2.5" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /><path d="M12 14.5v2" /></>,

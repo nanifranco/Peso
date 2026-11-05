@@ -125,7 +125,7 @@ export default function App() {
               </button>
             ))}
           </div>
-          <button onClick={() => setSheet('menu')} className="grid h-[54px] w-[54px] shrink-0 place-items-center rounded-full border border-white/30 bg-ink text-3xl font-light text-white shadow-[0_14px_30px_-12px_rgba(18,48,44,0.8)] active:scale-95" aria-label="Agregar">+</button>
+          <button onClick={() => setSheet('menu')} className="grid h-[54px] w-[54px] shrink-0 place-items-center rounded-full border border-white/30 bg-ink text-white shadow-[0_14px_30px_-12px_rgba(18,48,44,0.8)] active:scale-95" aria-label="Agregar"><Icon name="plus" size={26} stroke={2} /></button>
         </div>
       </nav>
 
