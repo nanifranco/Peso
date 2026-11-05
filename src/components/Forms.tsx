@@ -83,7 +83,7 @@ export function InBodyForm({ onSave }: { onSave: (ib: InBody) => void }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         {IB_FIELDS.map((f) => (
-          <div key={f.k}>
+          <div key={f.k} className="min-w-0">
             <label className="label">{f.label}</label>
             <div className="relative">
               <input inputMode="decimal" value={vals[f.k] ?? ''} onChange={(e) => setVals({ ...vals, [f.k]: e.target.value })} className="field pr-12" />
@@ -129,28 +129,37 @@ export function ProfileForm({ initial, initialStart, onSave, withWeight, cta }: 
       className="space-y-4"
     >
       <div className="grid grid-cols-2 gap-3">
-        <div>
+        <div className="min-w-0">
           <label className="label">Estatura (cm)</label>
           <input inputMode="decimal" value={h} onChange={(e) => setH(e.target.value)} placeholder="165" className="field" />
         </div>
         {withWeight && (
-          <div>
+          <div className="min-w-0">
             <label className="label">Peso hoy (kg)</label>
             <input inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value)} placeholder="88.0" className="field" />
           </div>
         )}
-        <div>
+        <div className="min-w-0">
           <label className="label">Peso al empezar</label>
           <input inputMode="decimal" value={start} onChange={(e) => setStart(e.target.value)} placeholder={withWeight ? 'Si ya bajaste' : 'kg'} className="field" />
         </div>
-        <div>
+        {withWeight && (
+          <div className={withWeight ? 'min-w-0' : 'col-span-2 min-w-0'}>
+            <label className="label">Meta (kg, opcional)</label>
+            <input inputMode="decimal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Sin meta: solo celebrar" className="field" />
+          </div>
+        )}
+        {/* La fecha va en su propia fila: en iPhone el campo de fecha no cabe en media columna */}
+        <div className="col-span-2 min-w-0">
           <label className="label">¿Cuándo empezaste?</label>
-          <input type="date" max={todayISO()} value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field px-3! text-base!" />
+          <input type="date" max={todayISO()} value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field" />
         </div>
-        <div className={withWeight ? 'col-span-2' : ''}>
-          <label className="label">Meta (kg, opcional)</label>
-          <input inputMode="decimal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Sin meta: solo celebrar" className="field" />
-        </div>
+        {!withWeight && (
+          <div className={withWeight ? 'min-w-0' : 'col-span-2 min-w-0'}>
+            <label className="label">Meta (kg, opcional)</label>
+            <input inputMode="decimal" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="Sin meta: solo celebrar" className="field" />
+          </div>
+        )}
       </div>
       {!withWeight && (
         <div className="space-y-2 border-t border-white/80 pt-4">
@@ -159,11 +168,11 @@ export function ProfileForm({ initial, initialStart, onSave, withWeight, cta }: 
             <p className="text-xs text-mute">Tu hoja de InBody trae el rango normal de grasa y músculo para ti; úsalo como guía. Se ven en Gráficas.</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="min-w-0">
               <label className="label">Grasa ideal (%)</label>
               <input inputMode="decimal" value={fatIdeal} onChange={(e) => setFatIdeal(e.target.value)} placeholder="30" className="field" />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="label">Músculo ideal (kg)</label>
               <input inputMode="decimal" value={musIdeal} onChange={(e) => setMusIdeal(e.target.value)} placeholder="31" className="field" />
             </div>
