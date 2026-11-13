@@ -132,50 +132,6 @@
       "bmr": 1506
     }
   ],
-  "baseline": [
-    {
-      "id": "b2021-1",
-      "date": "2021-04-05",
-      "kg": 100.2,
-      "fatPct": 49.4,
-      "source": "PFC Fitness Camp"
-    },
-    {
-      "id": "b2021-2",
-      "date": "2021-04-12",
-      "kg": 99.4,
-      "fatPct": 47.5,
-      "source": "PFC Fitness Camp"
-    },
-    {
-      "id": "b2021-3",
-      "date": "2021-04-16",
-      "kg": 99.1,
-      "fatPct": 46.7,
-      "source": "PFC Fitness Camp"
-    },
-    {
-      "id": "b2021-4",
-      "date": "2021-06-21",
-      "kg": 101.8,
-      "fatPct": 45.1,
-      "source": "PFC Fitness Camp"
-    },
-    {
-      "id": "b2021-5",
-      "date": "2021-06-29",
-      "kg": 97.5,
-      "fatPct": 44.7,
-      "source": "PFC Fitness Camp"
-    },
-    {
-      "id": "b2021-6",
-      "date": "2021-07-02",
-      "kg": 96.8,
-      "fatPct": 45.1,
-      "source": "PFC Fitness Camp"
-    }
-  ],
   "events": [],
   "unlocked": {}
 }

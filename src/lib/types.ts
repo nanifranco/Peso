@@ -29,18 +29,6 @@ export interface InBody {
   bmr?: number // metabolismo basal (kcal)
 }
 
-/**
- * Medición de hace años (antes de este camino). Solo es referencia:
- * no cuenta como inicio, ni para la tendencia, ni para los logros.
- */
-export interface Baseline {
-  id: string
-  date: string
-  kg: number
-  fatPct?: number
-  source?: string
-}
-
 export interface PlannedEvent {
   id: string
   name: string
@@ -52,8 +40,6 @@ export interface State {
   weighIns: WeighIn[]
   inbodies: InBody[]
   events: PlannedEvent[]
-  /** referencias de hace años (src/seed.json → baseline) */
-  baseline?: Baseline[]
   unlocked: Record<string, string> // id de logro -> fecha en que se desbloqueó
 }
 
