@@ -252,6 +252,7 @@ export function Historial({ state, sum, onOpenSettings }: { state: State; sum: S
         </p>
         <WeightChart data={sum.ws} goal={sum.p.goalKg} rate={sum.rate} inbodyDates={state.inbodies.map((i) => i.date)} />
       </section>
+      <BaselineCard state={state} sum={sum} />
       <section className="card p-4">
         <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Badge icon="chart" tone="mint" size={30} />Kilos por mes</h2>
         <p className="mb-2 text-xs text-mute">Cuánto cambió tu peso cada mes</p>
@@ -264,6 +265,47 @@ export function Historial({ state, sum, onOpenSettings }: { state: State; sum: S
       </section>
       <BodySection state={state} sum={sum} onOpenSettings={onOpenSettings} />
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Hace años: mediciones viejas como referencia (no cuentan como inicio) */
+/* ------------------------------------------------------------------ */
+function BaselineCard({ state, sum }: { state: State; sum: Summary }) {
+  const b = sortByDate(state.baseline ?? [])
+  if (!b.length || !sum.ws.length) return null
+  const years = [...new Set(b.map((x) => x.date.slice(0, 4)))].join('–')
+  const low = b.reduce((m, x) => (x.kg < m.kg ? x : m))
+  const last = b[b.length - 1]
+  const vsLow = sum.current - low.kg
+  const source = b.find((x) => x.source)?.source
+  const short = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+  return (
+    <section className="card p-4">
+      <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Badge icon="calendar" tone="sky" size={30} />Hace años · {years}</h2>
+      <p className="mb-3 text-xs text-mute">Tu referencia de antes{source ? ` (${source})` : ''}. No cambia tu inicio ni tus logros.</p>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <Tile icon="flag" label={`Mín. ${years}`} value={fmt(low.kg)} unit="kg" />
+        <Tile icon="scale" label="Hoy" value={fmt(sum.current)} unit="kg" />
+        <Tile icon="trendDown" label="Diferencia" value={`${vsLow <= 0 ? '−' : '+'}${fmt(Math.abs(vsLow))}`} unit="kg" />
+      </div>
+      <p className="tile mt-3 bg-sun/20! p-3 text-[13px] leading-relaxed">
+        {vsLow < 0
+          ? <>Hoy pesas <b>{fmt(-vsLow)} kg menos</b> que tu peso más bajo de {years} ({fmt(low.kg)} kg, {dateLabel(low.date)}). Ya estás más abajo que nunca en este registro.</>
+          : <>Te faltan <b>{fmt(vsLow)} kg</b> para llegar a tu peso más bajo de {years} ({fmt(low.kg)} kg, {dateLabel(low.date)}).</>}
+      </p>
+      <div className="mt-3 divide-y divide-ink/5 text-sm">
+        {b.map((x) => (
+          <div key={x.id} className="flex items-center justify-between py-1.5">
+            <span className="text-mute">{short(x.date)} {x.date.slice(0, 4)}</span>
+            <span className="font-semibold">{fmt(x.kg)} kg{x.fatPct != null ? <span className="ml-2 font-normal text-mute">{fmt(x.fatPct)}% grasa</span> : null}</span>
+          </div>
+        ))}
+      </div>
+      {last.fatPct != null && (
+        <p className="mt-2 text-[11px] leading-snug text-mute">El % de grasa de entonces se midió con otro método que el InBody, así que compáralo con calma.</p>
+      )}
+    </section>
   )
 }
 
