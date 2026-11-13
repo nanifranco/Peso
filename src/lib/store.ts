@@ -42,7 +42,19 @@ export function loadState(): State {
     const raw = localStorage.getItem(KEY)
     if (raw) s = normalize({ ...emptyState(), ...JSON.parse(raw) })
   } catch { /* datos dañados: empezamos vacío */ }
-  return mergeSeed(s)
+  return mergeBaseline(mergeSeed(s))
+}
+
+/**
+ * El baseline (mediciones de hace años) se mezcla en cada carga, aparte del historial:
+ * así llega también a teléfonos donde el historial ya se había cargado. Sin duplicar fechas.
+ */
+function mergeBaseline(s: State): State {
+  const seed = SEED?.baseline ?? []
+  const mine = s.baseline ?? []
+  const have = new Set(mine.map((b) => b.date))
+  const add = seed.filter((b) => !have.has(b.date))
+  return add.length || !s.baseline ? { ...s, baseline: [...mine, ...add] } : s
 }
 
 export function saveState(s: State) {
@@ -55,7 +67,8 @@ export function saveState(s: State) {
 
 /** La app siempre es de Nani (mujer) */
 export function normalize(s: State): State {
-  return s.profile ? { ...s, profile: { ...s.profile, name: 'Nani', sex: 'm' } } : s
+  // también al restaurar un respaldo viejo sin baseline
+  return mergeBaseline(s.profile ? { ...s, profile: { ...s.profile, name: 'Nani', sex: 'm' } } : s)
 }
 
 export const START_ID = 'start'
